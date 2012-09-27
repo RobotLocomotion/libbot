@@ -1,0 +1,7 @@
+package bot_param;
+
+struct entry_t
+{
+		string key;				//the key for this entry
+        string value;           //string containing the value for that key
+}
