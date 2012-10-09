@@ -367,7 +367,7 @@ class SheriffCommandTreeView(gtk.TreeView):
                 sheriff.TRYING_TO_STOP : "Yellow",
                 sheriff.REMOVING : "Yellow",
                 sheriff.STOPPED_ERROR : "Red",
-                sheriff.UNKNOWN : "Red"
+                sheriff.UNKNOWN : "Gray"
                 }
 
         assert model is self.cmds_ts
