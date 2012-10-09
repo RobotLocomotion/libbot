@@ -7,6 +7,7 @@ import os
 import platform
 import sys
 import time
+import random
 #import types
 import signal
 
@@ -19,9 +20,9 @@ from bot_procman.sheriff_cmd_t import sheriff_cmd_t
 import bot_procman.sheriff_config as sheriff_config
 from bot_procman.sheriff_script import SheriffScript
 
-def dbg(*args):
+def dbg(text):
     return
-    sys.stderr.write(*args)
+    sys.stderr.write("%s\n" % text)
 
 def timestamp_now():
     return int(time.time() * 1000000)
@@ -61,6 +62,7 @@ class SheriffDeputyCommand(gobject.GObject):
         self.scheduled_for_removal = False
         self.actual_runid = 0
         self.auto_respawn = False
+        self.updated_from_info = False
 
     def _update_from_cmd_info (self, cmd_info):
         self.pid = cmd_info.pid
@@ -69,6 +71,7 @@ class SheriffDeputyCommand(gobject.GObject):
         self.cpu_usage = cmd_info.cpu_usage
         self.mem_vsize_bytes = cmd_info.mem_vsize_bytes
         self.mem_rss_bytes = cmd_info.mem_rss_bytes
+        self.updated_from_info = True
 
         # if the command has run to completion and we don't need it to respawn,
         # then prevent it from respawning if the deputy restarts
@@ -110,6 +113,8 @@ class SheriffDeputyCommand(gobject.GObject):
         return self.group
 
     def status (self):
+        if not self.updated_from_info:
+            return UNKNOWN
         if self.desired_runid != self.actual_runid and not self.force_quit:
             if self.pid == 0:
                 return TRYING_TO_START
@@ -395,7 +400,6 @@ class Sheriff (gobject.GObject):
         self._is_observer = False
         self.name = platform.node () + ":" + str(os.getpid ()) + \
                 ":" + str (timestamp_now ())
-        self._next_sheriff_id = 1
 
         # variables for scripts
         self.scripts = []
@@ -442,6 +446,39 @@ class Sheriff (gobject.GObject):
         dbg ("received pmd info from [%s]" % dep_info.host)
 
         deputy = self._get_or_make_deputy (dep_info.host)
+
+        # If this is the first time we've heard from the deputy and we already
+        # have a desired state for the deputy, then try to reconcile the stored
+        # desired state with the deputy's reported state.
+        if not deputy.last_update_utime and deputy.commands:
+            dbg("First update from [%s]" % dep_info.host)
+            # for each command we already have lined up in the deputy, check to
+            # see if the deputy is already managing that command.  If the
+            # deputy is already managing that command, then reassign the
+            # internal ID for the command to match what the deputy is
+            # reporting.
+            for cmd in deputy.commands.values():
+                for cmd_info in dep_info.cmds:
+                    if cmd.name == cmd_info.name and \
+                       cmd.nickname == cmd_info.nickname and \
+                       cmd.group == cmd_info.group and \
+                       cmd.auto_respawn == cmd_info.auto_respawn:
+                           collision = False
+                           for deputy in self.deputies.values():
+                               if deputy.commands.get(cmd_info.sheriff_id, cmd) is not cmd:
+                                   collision = True
+                                   break
+                           if not collision:
+                               # found a command managed by the deputy that looks
+                               # exactly like the command the sheriff wants the
+                               # deputy to run.  Reassign the sheriff ID to match
+                               # what the deputy is reporting.
+                               del deputy.commands[cmd.sheriff_id]
+                               cmd.sheriff_id = cmd_info.sheriff_id
+                               deputy.commands[cmd.sheriff_id] = cmd
+                               dbg("Merging command [%s] with command reported by deputy" % cmd.nickname)
+                               break
+
         status_changes = deputy._update_from_deputy_info (dep_info)
 
         self.emit ("deputy-info-received", deputy)
@@ -458,19 +495,19 @@ class Sheriff (gobject.GObject):
         self._maybe_emit_status_change_signals (deputy, status_changes)
 
     def __get_free_sheriff_id (self):
+        id_to_try = random.randint(0, (1 << 31) - 1)
+
         for i in range (1 << 16):
             collision = False
             for deputy in self.deputies.values ():
-                if self._next_sheriff_id in deputy.commands:
+                if id_to_try in deputy.commands:
                     collision = True
                     break
 
             if not collision:
-                result = self._next_sheriff_id
+                result = id_to_try
 
-            self._next_sheriff_id += 1
-            if self._next_sheriff_id > (1 << 30):
-                self._next_sheriff_id = 1
+            id_to_try = random.randint(0, (1 << 31) - 1)
 
             if not collision:
                 return result
@@ -483,12 +520,17 @@ class Sheriff (gobject.GObject):
     # such as add_command, start_command, etc.  In general, you should only
     # need to explicitly call this method for a periodic transmission to be
     # robust against network failures and dropped messages.
+    #
+    # @note Orders will only be sent to a deputy if the sheriff has received at
+    # least one update from the deputy.
     def send_orders (self):
         if self._is_observer:
             raise ValueError ("Can't send orders in Observer mode")
         for deputy in self.deputies.values ():
-            msg = deputy._make_orders_message (self.name)
-            self.lc.publish ("PMD_ORDERS", msg.encode ())
+            # only send orders to a deputy if we've heard from it.
+            if deputy.last_update_utime > 0:
+                msg = deputy._make_orders_message (self.name)
+                self.lc.publish ("PMD_ORDERS", msg.encode ())
 
     ## Add a new command.
     #
