@@ -113,8 +113,8 @@ class SheriffDeputyCommand(gobject.GObject):
         return self.group
 
     def status (self):
-        if not self.updated_from_info:
-            return UNKNOWN
+#        if not self.updated_from_info:
+#            return UNKNOWN
         if self.desired_runid != self.actual_runid and not self.force_quit:
             if self.pid == 0:
                 return TRYING_TO_START
