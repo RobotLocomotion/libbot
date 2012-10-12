@@ -464,8 +464,8 @@ class Sheriff (gobject.GObject):
                        cmd.group == cmd_info.group and \
                        cmd.auto_respawn == cmd_info.auto_respawn:
                            collision = False
-                           for deputy in self.deputies.values():
-                               if deputy.commands.get(cmd_info.sheriff_id, cmd) is not cmd:
+                           for other_deputy in self.deputies.values():
+                               if other_deputy.commands.get(cmd_info.sheriff_id, cmd) is not cmd:
                                    collision = True
                                    break
                            if not collision:
