@@ -21,6 +21,6 @@ pods_install_libraries(bot2-core)
 pods_install_headers(${h_files} DESTINATION bot_core)
 
 pods_install_pkg_config_file(${PROJECT_NAME}
-    LIBS -lbot2-core m
+    LIBS -lbot2-core -lm
     REQUIRES ${REQUIRED_LIBS}
     VERSION 0.0.1)
