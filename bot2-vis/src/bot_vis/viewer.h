@@ -285,6 +285,7 @@ typedef struct _BotViewerClass BotViewerClass;
  * @view_handler:
  * @default_view_handler:
  * @controls_box:
+ * @controls_box_left: additional control on the left hand side
  * @record_button:
  * @menu_bar:
  * @mov_bgr_buf:
@@ -336,6 +337,7 @@ struct _BotViewer {
     BotViewHandler       *default_view_handler;
 
     GtkWidget         *controls_box;
+    GtkWidget         *controls_box_left;
 
     GtkWidget         *record_button;
     GtkWidget         *menu_bar;
@@ -393,6 +395,22 @@ void bot_viewer_set_window_title (BotViewer *viewer, const char *window_name);
  */
 void bot_viewer_request_redraw (BotViewer *viewer);
 
+
+
+/**
+ * bot_viewer_add_renderer:
+ * @viewer: The viewer to add the renderer to.
+ * @plugin: The renderer to add.
+ * @priority: The priority to assign the new renderer.
+ * @control_box: Which control box to add to 0=left 1=right.
+ *
+ * Adds a renderer to the viewer.  BotRenderers are called at render time, in the
+ * order in which they were added to the viewer.
+ */
+void bot_viewer_add_renderer_plus_control (BotViewer *viewer, BotRenderer *plugin, int priority, int which_side);
+
+
+
 /**
  * bot_viewer_add_renderer:
  * @viewer: The viewer to add the renderer to.
@@ -400,9 +418,13 @@ void bot_viewer_request_redraw (BotViewer *viewer);
  * @priority: The priority to assign the new renderer.
  *
  * Adds a renderer to the viewer.  BotRenderers are called at render time, in the
- * order in which they were added to the viewer.
+ * order in which they were added to the viewer. 
+ * Defaults to right hand side (control_box=1) - the default
  */
-void bot_viewer_add_renderer (BotViewer *viewer, BotRenderer *plugin, int priority);
+void bot_viewer_add_renderer (BotViewer *self, BotRenderer *renderer, int priority);
+
+
+
 
 /**
  * bot_viewer_remove_renderer:
