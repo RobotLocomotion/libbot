@@ -398,7 +398,7 @@ void bot_viewer_request_redraw (BotViewer *viewer);
 
 
 /**
- * bot_viewer_add_renderer:
+ * bot_viewer_on_side:
  * @viewer: The viewer to add the renderer to.
  * @plugin: The renderer to add.
  * @priority: The priority to assign the new renderer.
@@ -407,7 +407,7 @@ void bot_viewer_request_redraw (BotViewer *viewer);
  * Adds a renderer to the viewer.  BotRenderers are called at render time, in the
  * order in which they were added to the viewer.
  */
-void bot_viewer_add_renderer_plus_control (BotViewer *viewer, BotRenderer *plugin, int priority, int which_side);
+void bot_viewer_add_renderer_on_side (BotViewer *viewer, BotRenderer *plugin, int priority, int which_side);
 
 
 
