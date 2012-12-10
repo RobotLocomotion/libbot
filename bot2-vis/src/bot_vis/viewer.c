@@ -1157,7 +1157,7 @@ void bot_viewer_add_renderer_on_side (BotViewer *self, BotRenderer *renderer, in
 
 
 void bot_viewer_add_renderer (BotViewer *self, BotRenderer *renderer, int priority){
-    return bot_viewer_add_renderer_plus_control (self, renderer, priority, 1);
+    return bot_viewer_add_renderer_on_side (self, renderer, priority, 1);
 }
 
 
