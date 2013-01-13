@@ -56,11 +56,11 @@ class deputy_cmd_t(object):
     def _decode_one(buf):
         self = deputy_cmd_t()
         __name_len = struct.unpack('>I', buf.read(4))[0]
-        self.name = buf.read(__name_len)[:-1].decode('utf-8')
+        self.name = buf.read(__name_len)[:-1].decode('utf-8', 'replace')
         __nickname_len = struct.unpack('>I', buf.read(4))[0]
-        self.nickname = buf.read(__nickname_len)[:-1].decode('utf-8')
+        self.nickname = buf.read(__nickname_len)[:-1].decode('utf-8', 'replace')
         __group_len = struct.unpack('>I', buf.read(4))[0]
-        self.group = buf.read(__group_len)[:-1].decode('utf-8')
+        self.group = buf.read(__group_len)[:-1].decode('utf-8', 'replace')
         self.pid, self.actual_runid, self.exit_code, self.cpu_usage, self.mem_vsize_bytes, self.mem_rss_bytes, self.sheriff_id, self.auto_respawn = struct.unpack(">iiifqqib", buf.read(37))
         return self
     _decode_one = staticmethod(_decode_one)
@@ -69,11 +69,11 @@ class deputy_cmd_t(object):
     def _get_hash_recursive(parents):
         if deputy_cmd_t in parents: return 0
         tmphash = (0xed5fbe5982ac8353) & 0xffffffffffffffff
-        tmphash  = (((tmphash<<1)&0xffffffffffffffff)  + (tmphash>>63)) & 0xffffffffffffffff 
+        tmphash  = (((tmphash<<1)&0xffffffffffffffff)  + (tmphash>>63)) & 0xffffffffffffffff
         return tmphash
     _get_hash_recursive = staticmethod(_get_hash_recursive)
     _packed_fingerprint = None
-    
+
     def _get_packed_fingerprint():
         if deputy_cmd_t._packed_fingerprint is None:
             deputy_cmd_t._packed_fingerprint = struct.pack(">Q", deputy_cmd_t._get_hash_recursive([]))

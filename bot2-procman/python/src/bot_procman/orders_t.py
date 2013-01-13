@@ -39,6 +39,7 @@ class orders_t(object):
         buf.write("\0")
         buf.write(struct.pack(">i", self.ncmds))
         for i0 in range(self.ncmds):
+            assert self.cmds[i0]._get_packed_fingerprint() == sheriff_cmd_t.sheriff_cmd_t._get_packed_fingerprint()
             self.cmds[i0]._encode_one(buf)
         buf.write(struct.pack(">i", self.nvars))
         for i0 in range(self.nvars):
@@ -66,9 +67,9 @@ class orders_t(object):
         self = orders_t()
         self.utime = struct.unpack(">q", buf.read(8))[0]
         __host_len = struct.unpack('>I', buf.read(4))[0]
-        self.host = buf.read(__host_len)[:-1].decode('utf-8')
+        self.host = buf.read(__host_len)[:-1].decode('utf-8', 'replace')
         __sheriff_name_len = struct.unpack('>I', buf.read(4))[0]
-        self.sheriff_name = buf.read(__sheriff_name_len)[:-1].decode('utf-8')
+        self.sheriff_name = buf.read(__sheriff_name_len)[:-1].decode('utf-8', 'replace')
         self.ncmds = struct.unpack(">i", buf.read(4))[0]
         self.cmds = []
         for i0 in range(self.ncmds):
@@ -77,11 +78,11 @@ class orders_t(object):
         self.varnames = []
         for i0 in range(self.nvars):
             __varnames_len = struct.unpack('>I', buf.read(4))[0]
-            self.varnames.append(buf.read(__varnames_len)[:-1].decode('utf-8'))
+            self.varnames.append(buf.read(__varnames_len)[:-1].decode('utf-8', 'replace'))
         self.varvals = []
         for i0 in range(self.nvars):
             __varvals_len = struct.unpack('>I', buf.read(4))[0]
-            self.varvals.append(buf.read(__varvals_len)[:-1].decode('utf-8'))
+            self.varvals.append(buf.read(__varvals_len)[:-1].decode('utf-8', 'replace'))
         return self
     _decode_one = staticmethod(_decode_one)
 
@@ -90,11 +91,11 @@ class orders_t(object):
         if orders_t in parents: return 0
         newparents = parents + [orders_t]
         tmphash = (0x88ae05f979d423b1+ sheriff_cmd_t.sheriff_cmd_t._get_hash_recursive(newparents)) & 0xffffffffffffffff
-        tmphash  = (((tmphash<<1)&0xffffffffffffffff)  + (tmphash>>63)) & 0xffffffffffffffff 
+        tmphash  = (((tmphash<<1)&0xffffffffffffffff)  + (tmphash>>63)) & 0xffffffffffffffff
         return tmphash
     _get_hash_recursive = staticmethod(_get_hash_recursive)
     _packed_fingerprint = None
-    
+
     def _get_packed_fingerprint():
         if orders_t._packed_fingerprint is None:
             orders_t._packed_fingerprint = struct.pack(">Q", orders_t._get_hash_recursive([]))

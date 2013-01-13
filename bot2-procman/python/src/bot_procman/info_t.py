@@ -14,7 +14,7 @@ class info_t(object):
     def __init__(self):
         self.utime = 0
         self.host = ""
-        self.cpu_load = 0
+        self.cpu_load = 0.0
         self.phys_mem_total_bytes = 0
         self.phys_mem_free_bytes = 0
         self.swap_total_bytes = 0
@@ -36,6 +36,7 @@ class info_t(object):
         buf.write("\0")
         buf.write(struct.pack(">fqqqqi", self.cpu_load, self.phys_mem_total_bytes, self.phys_mem_free_bytes, self.swap_total_bytes, self.swap_free_bytes, self.ncmds))
         for i0 in range(self.ncmds):
+            assert self.cmds[i0]._get_packed_fingerprint() == deputy_cmd_t.deputy_cmd_t._get_packed_fingerprint()
             self.cmds[i0]._encode_one(buf)
 
     def decode(data):
@@ -52,7 +53,7 @@ class info_t(object):
         self = info_t()
         self.utime = struct.unpack(">q", buf.read(8))[0]
         __host_len = struct.unpack('>I', buf.read(4))[0]
-        self.host = buf.read(__host_len)[:-1].decode('utf-8')
+        self.host = buf.read(__host_len)[:-1].decode('utf-8', 'replace')
         self.cpu_load, self.phys_mem_total_bytes, self.phys_mem_free_bytes, self.swap_total_bytes, self.swap_free_bytes, self.ncmds = struct.unpack(">fqqqqi", buf.read(40))
         self.cmds = []
         for i0 in range(self.ncmds):
@@ -65,11 +66,11 @@ class info_t(object):
         if info_t in parents: return 0
         newparents = parents + [info_t]
         tmphash = (0x925c28f65a35e1d7+ deputy_cmd_t.deputy_cmd_t._get_hash_recursive(newparents)) & 0xffffffffffffffff
-        tmphash  = (((tmphash<<1)&0xffffffffffffffff)  + (tmphash>>63)) & 0xffffffffffffffff 
+        tmphash  = (((tmphash<<1)&0xffffffffffffffff)  + (tmphash>>63)) & 0xffffffffffffffff
         return tmphash
     _get_hash_recursive = staticmethod(_get_hash_recursive)
     _packed_fingerprint = None
-    
+
     def _get_packed_fingerprint():
         if info_t._packed_fingerprint is None:
             info_t._packed_fingerprint = struct.pack(">Q", info_t._get_hash_recursive([]))
