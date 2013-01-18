@@ -1188,7 +1188,9 @@ int main(int argc, char **argv)
   serv_params.port = params.port;
   strcpy(serv_params.lcm_url, params.lcm_url);
   serv_params.verbose = params.verbose;
-  LcmTunnelServer::initializeServer(&serv_params);
+  if(!LcmTunnelServer::initializeServer(&serv_params)) {
+    exit(1);
+  }
 
   //create this client
   if (params.connectToServer) {
