@@ -273,12 +273,13 @@ _link_get_trans_interp(const BotCTransLink *link, int64_t utime,
             break;
         i++;
     }
-    if (i == link->trans_history->len)
-        t2 = NULL;
-
-    if(!t2) {
+    if (1 == link->trans_history->len) {
         memcpy(result, &t1->trans, sizeof(BotTrans));
     } else {
+        if (i == 0) {
+            t2 = t1;
+            t1 = bot_circular_peek_nth (link->trans_history, 1);
+        }
         assert(t1->utime < t2->utime);
         double weight_2 = 
             (double)((utime - t1->utime)) / (t2->utime - t1->utime);
