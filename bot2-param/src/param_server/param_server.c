@@ -97,6 +97,7 @@ static void usage(int argc, char ** argv)
             "Options:\n"
             "   -h, --help          print this help and exit\n"
             "   -s, --server-name   publishes params from named server\n"
+            "   -l, --lcm-url       Use this specified LCM URL\n"
             "\n"
             , argv[0]);
 }
@@ -116,22 +117,25 @@ int main(int argc, char ** argv)
       exit(1);
   }
 
-  self->lcm = lcm_create(NULL); //TODO: provider options?
-  lcmu_glib_mainloop_attach_lcm(self->lcm);
 
-  char *optstring = "hs:";
+  char *optstring = "hs:l:";
   struct option long_opts[] = {
       { "help", no_argument, NULL, 'h' },
       { "server-name", required_argument, NULL, 's' },
+      { "lcm-url", required_argument, NULL, 'l' },
       { 0, 0, 0, 0 }
   };
   int c=-1;
   char *param_prefix = NULL;
+  char *lcm_url = NULL;
   while ((c = getopt_long (argc, argv, optstring, long_opts, 0)) >= 0)
   {
       switch (c) {
       case 's':
           param_prefix = optarg;
+          break;
+      case 'l':
+          lcm_url = optarg;
           break;
       case 'h':
       default:
@@ -139,6 +143,10 @@ int main(int argc, char ** argv)
           return 1;
       }
   }
+  
+  self->lcm = lcm_create(lcm_url);
+  lcmu_glib_mainloop_attach_lcm(self->lcm);
+  
 
   self->seqNo = 0;
   self->id = _timestamp_now();
