@@ -48,6 +48,7 @@ Requirements
     libgl1-mesa-dev
     libglu1-mesa-dev
     freeglut3-dev
+    libjpeg-dev
 
     Additionally, you'll need to install LCM from http://lcm.googlecode.com
 
