@@ -39,6 +39,7 @@
 #include <lcmtypes/bot_procman_printf_t.h>
 #include <lcmtypes/bot_procman_info_t.h>
 #include <lcmtypes/bot_procman_orders_t.h>
+#include <lcmtypes/bot_procman_discovery_t.h>
 #include "procman.h"
 #include "procinfo.h"
 #include "signal_pipe.h"
@@ -49,6 +50,7 @@
 #define MIN_RESPAWN_DELAY_MS 10
 #define MAX_RESPAWN_DELAY_MS 1000
 #define RESPAWN_BACKOFF_RATE 2
+#define DISCOVERY_TIME_MS 1500
 
 #define dbg(args...) fprintf(stderr, args)
 //#undef dbg
@@ -97,6 +99,12 @@ typedef struct _procman_deputy {
     GList *observed_sheriffs_slm; // names of observed sheriffs slm
     char *last_sheriff_name;      // name of the most recently observed sheriff
 
+    int64_t deputy_start_time;
+    bot_procman_info_t_subscription_t* info_subs;
+    bot_procman_discovery_t_subscription_t* discovery_subs;
+    bot_procman_orders_t_subscription_t* orders_subs;
+
+    pid_t deputy_pid;
     sys_cpu_mem_t cpu_time[2];
     float cpu_load;
 
@@ -586,19 +594,11 @@ on_scheduled_respawn(procman_cmd_t *cmd)
 }
 
 static gboolean
-one_second_timeout (procman_deputy_t *s)
+one_second_timeout (procman_deputy_t *pmd)
 {
-    update_cpu_times (s);
-    transmit_proc_info (s);
+    update_cpu_times (pmd);
+    transmit_proc_info (pmd);
     return TRUE;
-}
-
-static gboolean
-initial_transmit(procman_deputy_t* s)
-{
-    update_cpu_times (s);
-    transmit_proc_info(s);
-    return FALSE;
 }
 
 static gboolean
@@ -874,6 +874,85 @@ procman_deputy_order_received (const lcm_recv_buf_t *rbuf, const char *channel,
     return;
 }
 
+static void
+procman_deputy_discovery_received(const lcm_recv_buf_t* rbuf, const char* channel,
+        const bot_procman_discovery_t* msg, void* user_data)
+{
+    procman_deputy_t *pmd = (procman_deputy_t*)user_data;
+
+    int64_t now = timestamp_now();
+    if(now < pmd->deputy_start_time + DISCOVERY_TIME_MS * 1000) {
+      // received a discovery message while still in discovery mode.  Check to
+      // see if it's from a conflicting deputy.
+      if(!strcmp(msg->host, pmd->hostname) && msg->nonce != pmd->deputy_pid) {
+        fprintf(stderr, "ERROR.  Detected another deputy named [%s].  Aborting to avoid conflicts.\n",
+            msg->host);
+        exit(1);
+      }
+    } else {
+      // received a discovery message while not in discovery mode.  Respond by
+      // transmitting deputy info.
+      transmit_proc_info(pmd);
+    }
+}
+
+static void
+procman_deputy_info_received(const lcm_recv_buf_t *rbuf, const char *channel,
+        const bot_procman_info_t *msg, void *user_data)
+{
+    procman_deputy_t *pmd = user_data;
+
+    int64_t now = timestamp_now();
+    if(now < pmd->deputy_start_time + DISCOVERY_TIME_MS * 1000) {
+      // A different deputy has reported while we're still in discovery mode.
+      // Check to see if the deputy names are in conflict.
+      if(!strcmp(msg->host, pmd->hostname)) {
+        fprintf(stderr, "ERROR.  Detected another deputy named [%s].  Aborting to avoid conflicts.\n",
+            msg->host);
+        exit(2);
+      }
+    } else {
+      fprintf(stderr, "WARNING:  Still processing info messages while not in discovery mode??\n");
+    }
+}
+
+static gboolean
+discovery_timeout(procman_deputy_t* pmd)
+{
+    int64_t now = timestamp_now();
+    if(now < pmd->deputy_start_time + DISCOVERY_TIME_MS * 1000)
+    {
+        // publish a discover message to check for conflicting deputies
+        bot_procman_discovery_t msg;
+        msg.utime = now;
+        msg.host = pmd->hostname;
+        msg.nonce = pmd->deputy_pid;
+        bot_procman_discovery_t_publish(pmd->lcm, "PMD_DISCOVER", &msg);
+        return TRUE;
+    } else {
+        // discovery period is over.
+
+        // Adjust subscriptions
+        bot_procman_info_t_unsubscribe(pmd->lcm, pmd->info_subs);
+        pmd->info_subs = NULL;
+
+        bot_procman_discovery_t_unsubscribe(pmd->lcm, pmd->discovery_subs);
+        pmd->discovery_subs = NULL;
+
+        pmd->discovery_subs = bot_procman_discovery_t_subscribe(pmd->lcm,
+            "PMD_DISCOVER", procman_deputy_discovery_received, pmd);
+
+        pmd->orders_subs = bot_procman_orders_t_subscribe (pmd->lcm,
+                "PMD_ORDERS", procman_deputy_order_received, pmd);
+
+        // setup a timer to periodically transmit status information
+        g_timeout_add(1000, (GSourceFunc) one_second_timeout, pmd);
+
+        one_second_timeout(pmd);
+        return FALSE;
+    }
+}
+
 static void usage()
 {
     fprintf (stderr, "usage: bot-procman-deputy [options]\n"
@@ -883,6 +962,16 @@ static void usage()
             "  -n, --name NAME   use deputy name NAME instead of hostname\n"
             "  -l, --log PATH    dump messages to PATH instead of stdout\n"
             "  -u, --lcmurl URL  use specified LCM URL for procman messages\n"
+            "\n"
+            "DEPUTY NAME\n"
+            "  The deputy name must be unique from other deputies.  On startup,\n"
+            "  if another deputy with the same name is detected, the newly started\n"
+            "  deputy will self-terminate.\n"
+            "\n"
+            "EXIT STATUS\n"
+            "  0   Clean exit on SIGINT, SIGTERM\n"
+            "  1   OS or other networking error\n"
+            "  2   Conflicting deputy detected on the network\n"
           );
 }
 
@@ -967,6 +1056,8 @@ int main (int argc, char **argv)
      pmd->observed_sheriffs_slm = NULL;
      pmd->last_sheriff_name = NULL;
      pmd->exiting = 0;
+     pmd->deputy_start_time = timestamp_now();
+     pmd->deputy_pid = getpid();
 
      pmd->mainloop = g_main_loop_new (NULL, FALSE);
      if (!pmd->mainloop) {
@@ -1000,20 +1091,23 @@ int main (int argc, char **argv)
      signal_pipe_add_signal (SIGQUIT);
      signal_pipe_add_signal (SIGTERM);
      signal_pipe_add_signal (SIGCHLD);
-     signal_pipe_attach_glib ((signal_pipe_glib_handler_t) glib_handle_signal, 
+     signal_pipe_attach_glib ((signal_pipe_glib_handler_t) glib_handle_signal,
              pmd);
 
      // setup LCM handler
      lcmu_glib_mainloop_attach_lcm (pmd->lcm);
 
-     bot_procman_orders_t_subscription_t *subs = 
-         bot_procman_orders_t_subscribe (pmd->lcm, "PMD_ORDERS",
-             procman_deputy_order_received, pmd);
+     pmd->info_subs =
+         bot_procman_info_t_subscribe(pmd->lcm, "PMD_INFO",
+                 procman_deputy_info_received, pmd);
 
-     // setup a timer to periodically transmit status information
-     g_timeout_add (1000, (GSourceFunc) one_second_timeout, pmd);
+     pmd->discovery_subs =
+         bot_procman_discovery_t_subscribe(pmd->lcm, "PMD_DISCOVER",
+                 procman_deputy_discovery_received, pmd);
 
-     g_timeout_add (300, (GSourceFunc) initial_transmit, pmd);
+     // periodically publish a discovery message on startup.
+     g_timeout_add(200, (GSourceFunc)discovery_timeout, pmd);
+     discovery_timeout(pmd);
 
      // periodically check memory usage
      g_timeout_add (120000, (GSourceFunc) introspection_timeout, pmd);
@@ -1030,7 +1124,13 @@ int main (int argc, char **argv)
 
      g_main_loop_unref (pmd->mainloop);
 
-     bot_procman_orders_t_unsubscribe(pmd->lcm, subs);
+     // unsubscribe
+     if(pmd->orders_subs)
+         bot_procman_orders_t_unsubscribe(pmd->lcm, pmd->orders_subs);
+     if(pmd->info_subs)
+         bot_procman_info_t_unsubscribe(pmd->lcm, pmd->info_subs);
+     if(pmd->discovery_subs)
+         bot_procman_discovery_t_unsubscribe(pmd->lcm, pmd->discovery_subs);
 
      for (GList *siter=pmd->observed_sheriffs_slm; siter; siter=siter->next) {
          free(siter->data);

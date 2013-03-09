@@ -11,3 +11,4 @@ from deputy_cmd_t import deputy_cmd_t
 
 from sheriff import Sheriff
 from sheriff_script import SheriffScript
+from discovery_t import discovery_t

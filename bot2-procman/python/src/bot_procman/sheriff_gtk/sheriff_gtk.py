@@ -279,6 +279,30 @@ class SheriffGtk(object):
                 self.spawned_deputy.wait()
         self.spawned_deputy = None
 
+    def _check_spawned_deputy(self):
+        if not self.spawned_deputy:
+            return
+
+        self.spawned_deputy.poll()
+        if self.spawned_deputy.returncode is None:
+            return
+
+        returncode_msgs = { \
+                0 : "Terminated",
+                1 : "OS or other networking error",
+                2 : "Conflicting deputy with same name already exists" }
+
+        msg = returncode_msgs.get(self.spawned_deputy.returncode, "Unknown error")
+
+        self.spawn_deputy_mi.set_sensitive(True)
+        self.terminate_spawned_deputy_mi.set_sensitive(False)
+        self.spawned_deputy = None
+
+        dialog = gtk.MessageDialog(self.window, 0, gtk.MESSAGE_ERROR,
+                gtk.BUTTONS_OK, "Spawned deputy exited prematurely: %s" % msg)
+        dialog.run()
+        dialog.destroy()
+
     def set_observer (self, is_observer):
         self.sheriff.set_observer (is_observer)
 
@@ -530,6 +554,7 @@ class SheriffGtk(object):
         self._update_menu_item_sensitivities ()
 
     def _maybe_send_orders (self):
+        self._check_spawned_deputy()
         if not self.sheriff.is_observer ():
             self.sheriff.send_orders ()
         return True
