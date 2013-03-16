@@ -1037,16 +1037,6 @@ class Sheriff (gobject.GObject):
 
         commands_to_add = []
 
-        def parse_env_variable_as_host(original_host):
-			#if host begins $ABCDE, set the host to be the environment variable ABCDE
-			replacement_host = os.environ.get(original_host[1:])
-			if replacement_host is None:
-				replacement_host = "localhost"
-				print "%s not found, using localhost instead" %(original_host)
-			#print "replacing %s with %s as host" % (cmd.attributes["host"], replacement_host)
-			return replacement_host
-
-
         def add_group_commands(group, name_prefix):
             for cmd in group.commands:
                 auto_respawn = cmd.attributes.get("auto_respawn", "").lower() in [ "true", "yes" ]
@@ -1057,16 +1047,12 @@ class Sheriff (gobject.GObject):
                 # if merging is enabled, then only add this command if we don't
                 # have an entry for it already.
                 if merge_with_existing:
-                    if (cmd.attributes["host"][0] == '$'):
-						cmd.attributes["host"] = parse_env_variable_as_host(cmd.attributes["host"])
                     cmdstr = "%s!%s!%s!%s!%s" % (cmd.attributes["host"], cmd.attributes["exec"],
                             cmd.attributes["nickname"], name_prefix + group.name, str(auto_respawn))
                     if cmdstr in current_command_strs:
                         add_command = False
 
                 if add_command:
-                    if (cmd.attributes["host"][0] == '$'):
-						cmd.attributes["host"] = parse_env_variable_as_host(cmd.attributes["host"])
                     commands_to_add.append((cmd.attributes["host"],
                         cmd.attributes["exec"],
                         cmd.attributes["nickname"],
