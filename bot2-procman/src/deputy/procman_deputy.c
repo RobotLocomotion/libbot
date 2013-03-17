@@ -322,7 +322,7 @@ stop_cmd (procman_deputy_t *pmd, procman_cmd_t *cmd)
         status = procman_kill_cmd (pmd->pm, cmd, SIGINT);
         mi->first_kill_time = now;
         mi->num_kills_sent++;
-    } else if(now > mi->first_kill_time + 5000000) {
+    } else if(now > mi->first_kill_time + 10000000) {
         status = procman_kill_cmd (pmd->pm, cmd, SIGKILL);
     } else {
         return 0;
