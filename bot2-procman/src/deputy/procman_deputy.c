@@ -322,7 +322,7 @@ stop_cmd (procman_deputy_t *pmd, procman_cmd_t *cmd)
         status = procman_kill_cmd (pmd->pm, cmd, SIGINT);
         mi->first_kill_time = now;
         mi->num_kills_sent++;
-    } else if(now > mi->first_kill_time + 10000000) {
+    } else if(now > mi->first_kill_time + 7000000) {
         status = procman_kill_cmd (pmd->pm, cmd, SIGKILL);
     } else {
         return 0;
@@ -446,7 +446,7 @@ glib_handle_signal (int signal, procman_deputy_t *pmd) {
         pmd->exiting = 1;
         // set a timer, after which everything will be more forcefully
         // terminated.
-        g_timeout_add(3500, (GSourceFunc)on_quit_timeout, pmd);
+        g_timeout_add(10000, (GSourceFunc)on_quit_timeout, pmd);
     }
 
     if(pmd->exiting) {
