@@ -1874,8 +1874,9 @@ glmDraw(GLMmodel* model, GLuint mode)
         mode &= ~GLM_SMOOTH;
     }
     if (mode & GLM_TEXTURE && !model->texcoords) {
-        __glmWarning("glmDraw() warning: texture render mode requested "
-		     "with no texture coordinates defined.");
+        // Warnings ignored for DRC project
+        //__glmWarning("glmDraw() warning: texture render mode requested "
+	//	     "with no texture coordinates defined.");
         mode &= ~GLM_TEXTURE;
     }
     if (mode & GLM_FLAT && mode & GLM_SMOOTH) {
@@ -1889,8 +1890,9 @@ glmDraw(GLMmodel* model, GLuint mode)
         mode &= ~GLM_COLOR;
     }
     if (mode & GLM_MATERIAL && !model->materials) {
-        __glmWarning("glmDraw() warning: material render mode requested "
-		     "with no materials defined.");
+        // Warnings ignored for DRC project
+        //__glmWarning("glmDraw() warning: material render mode requested "
+	//	     "with no materials defined.");
         mode &= ~GLM_MATERIAL;
     }
     if (mode & GLM_COLOR && mode & GLM_MATERIAL) {
