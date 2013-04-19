@@ -63,7 +63,7 @@ static int64_t timestamp_now()
     return (int64_t) tv.tv_sec * 1000000 + tv.tv_usec;
 }
 
-static void dbgt (const char *fmt, ...) 
+static void dbgt (const char *fmt, ...)
 {
     va_list ap;
     va_start (ap, fmt);
@@ -142,7 +142,7 @@ static procman_deputy_t global_pmd;
 static void
 transmit_proc_info (procman_deputy_t *s);
 
-static gboolean 
+static gboolean
 on_scheduled_respawn(procman_cmd_t *cmd);
 
 static void
@@ -162,7 +162,7 @@ printf_and_transmit (procman_deputy_t *pmd, int sid, char *fmt, ...) {
     char buf[256];
     va_list ap;
     va_start (ap, fmt);
-    
+
     len = vsnprintf (buf, sizeof (buf), fmt, ap);
     if (pmd->verbose)
         fputs (buf, stderr);
@@ -181,7 +181,7 @@ printf_and_transmit (procman_deputy_t *pmd, int sid, char *fmt, ...) {
 
 // invoked when a child process writes something to its stdout/stderr fd
 static int
-pipe_data_ready (GIOChannel *source, GIOCondition condition, 
+pipe_data_ready (GIOChannel *source, GIOCondition condition,
         procman_cmd_t *cmd)
 {
     pmd_cmd_moreinfo_t *mi = (pmd_cmd_moreinfo_t*)cmd->user;
@@ -192,7 +192,7 @@ pipe_data_ready (GIOChannel *source, GIOCondition condition,
         char buf[1024];
         int bytes_read = read (cmd->stdout_fd, buf, sizeof (buf)-1);
         if (bytes_read < 0) {
-            snprintf (buf, sizeof (buf), "procman [%s] read: %s (%d)\n", 
+            snprintf (buf, sizeof (buf), "procman [%s] read: %s (%d)\n",
                     cmd->cmd->str, strerror (errno), errno);
             dbgt (buf);
             transmit_str (&global_pmd, mi->sheriff_id, buf);
@@ -205,20 +205,20 @@ pipe_data_ready (GIOChannel *source, GIOCondition condition,
         anycondition = 1;
     }
     if (condition & G_IO_ERR) {
-        transmit_str (&global_pmd, mi->sheriff_id, 
+        transmit_str (&global_pmd, mi->sheriff_id,
                 "procman deputy: detected G_IO_ERR.\n");
         dbgt ("G_IO_ERR from [%s]\n", cmd->cmd->str);
         anycondition = 1;
     }
     if (condition & G_IO_HUP) {
-        transmit_str (&global_pmd, mi->sheriff_id, 
+        transmit_str (&global_pmd, mi->sheriff_id,
                 "procman deputy: detected G_IO_HUP.  end of output\n");
         dbgt ("G_IO_HUP from [%s]\n", cmd->cmd->str);
         result = FALSE;
         anycondition = 1;
     }
     if (condition & G_IO_NVAL) {
-        transmit_str (&global_pmd, mi->sheriff_id, 
+        transmit_str (&global_pmd, mi->sheriff_id,
                 "procman deputy: detected G_IO_NVAL.  end of output\n");
         dbgt ("G_IO_NVAL from [%s]\n", cmd->cmd->str);
         result = FALSE;
@@ -237,7 +237,7 @@ pipe_data_ready (GIOChannel *source, GIOCondition condition,
         anycondition = 1;
     }
     if (!anycondition) {
-        dbgt ("wtf??? [%s] pipe has condition 0x%X\n", cmd->cmd->str, 
+        dbgt ("wtf??? [%s] pipe has condition 0x%X\n", cmd->cmd->str,
                 condition);
     }
     return result;
@@ -248,13 +248,13 @@ maybe_schedule_respawn(procman_deputy_t *pmd, procman_cmd_t *cmd)
 {
     pmd_cmd_moreinfo_t *mi = (pmd_cmd_moreinfo_t*)cmd->user;
     if(mi->auto_respawn && !mi->should_be_stopped && !pmd->exiting) {
-        mi->respawn_timeout_id = 
+        mi->respawn_timeout_id =
             g_timeout_add(mi->respawn_backoff, (GSourceFunc)on_scheduled_respawn, cmd);
     }
 }
 
-static int 
-start_cmd (procman_deputy_t *pmd, procman_cmd_t *cmd, int desired_runid) 
+static int
+start_cmd (procman_deputy_t *pmd, procman_cmd_t *cmd, int desired_runid)
 {
     if(pmd->exiting) {
         return -1;
@@ -282,7 +282,7 @@ start_cmd (procman_deputy_t *pmd, procman_cmd_t *cmd, int desired_runid)
         printf_and_transmit (pmd, 0, "couldn't start [%s]\n", cmd->cmd->str);
         dbgt ("couldn't start [%s]\n", cmd->cmd->str);
         maybe_schedule_respawn(pmd, cmd);
-        printf_and_transmit (pmd, mi->sheriff_id, 
+        printf_and_transmit (pmd, mi->sheriff_id,
                 "ERROR!  couldn't start [%s]\n", cmd->cmd->str);
         return -1;
     }
@@ -305,8 +305,8 @@ start_cmd (procman_deputy_t *pmd, procman_cmd_t *cmd, int desired_runid)
     return 0;
 }
 
-static int 
-stop_cmd (procman_deputy_t *pmd, procman_cmd_t *cmd) 
+static int
+stop_cmd (procman_deputy_t *pmd, procman_cmd_t *cmd)
 {
     if (!cmd->pid) return 0;
 
@@ -357,8 +357,8 @@ check_for_dead_children (procman_deputy_t *pmd)
         if (WIFSIGNALED (cmd->exit_status)) {
             int signum = WTERMSIG (cmd->exit_status);
 
-            printf_and_transmit (pmd, mi->sheriff_id, 
-                    "%s\n", 
+            printf_and_transmit (pmd, mi->sheriff_id,
+                    "%s\n",
                     strsignal (signum), signum);
             if (WCOREDUMP (cmd->exit_status)) {
                 printf_and_transmit (pmd, mi->sheriff_id, "Core dumped.\n");
@@ -487,7 +487,7 @@ transmit_proc_info (procman_deputy_t *s)
     msg.swap_free_bytes = s->cpu_time[1].swapfree;
 
     msg.ncmds = g_list_length ((GList*) allcmds);
-    msg.cmds = 
+    msg.cmds =
         (bot_procman_deputy_cmd_t *) calloc (msg.ncmds, sizeof (bot_procman_deputy_cmd_t));
 
     const GList *iter = allcmds;
@@ -532,12 +532,12 @@ update_cpu_times (procman_deputy_t *s)
     sys_cpu_mem_t *a = &s->cpu_time[1];
     sys_cpu_mem_t *b = &s->cpu_time[0];
 
-    uint64_t elapsed_jiffies = a->user - b->user + 
-                                a->user_low - b->user_low + 
-                                a->system - b->system + 
+    uint64_t elapsed_jiffies = a->user - b->user +
+                                a->user_low - b->user_low +
+                                a->system - b->system +
                                 a->idle - b->idle;
     uint64_t loaded_jiffies = a->user - b->user +
-                              a->user_low - b->user_low + 
+                              a->user_low - b->user_low +
                               a->system - b->system;
     if (! elapsed_jiffies || loaded_jiffies > elapsed_jiffies) {
         s->cpu_load = 0;
@@ -561,7 +561,7 @@ update_cpu_times (procman_deputy_t *s)
                 proc_cpu_mem_t *pa = &mi->cpu_time[1];
                 proc_cpu_mem_t *pb = &mi->cpu_time[0];
 
-                uint64_t used_jiffies = pa->user - pb->user + 
+                uint64_t used_jiffies = pa->user - pb->user +
                                         pa->system - pb->system;
 
                 if (! elapsed_jiffies || pb->user == 0 || pb->system == 0 ||
@@ -619,7 +619,7 @@ introspection_timeout (procman_deputy_t *s)
     }
 
     dbgt ("MARK - rss: %"PRId64" kB vsz: %"PRId64
-            " kB procs: %d (%d alive)\n", 
+            " kB procs: %d (%d alive)\n",
             pinfo.rss / 1024, pinfo.vsize / 1024,
             g_list_length ((GList*)procman_get_cmds (s->pm)),
             nrunning
@@ -684,7 +684,7 @@ _set_command_nickname (procman_cmd_t *p, const char *nickname)
 }
 
 static void
-procman_deputy_order_received (const lcm_recv_buf_t *rbuf, const char *channel, 
+procman_deputy_order_received (const lcm_recv_buf_t *rbuf, const char *channel,
         const bot_procman_orders_t *orders, void *user_data)
 {
     procman_deputy_t *s = user_data;
@@ -698,7 +698,7 @@ procman_deputy_order_received (const lcm_recv_buf_t *rbuf, const char *channel,
 
     // ignore orders for other deputies
     if (strcmp (orders->host, s->hostname)) {
-        if (s->verbose) 
+        if (s->verbose)
             printf ("ignoring orders for other host %s\n", orders->host);
         return;
     }
@@ -722,10 +722,10 @@ procman_deputy_order_received (const lcm_recv_buf_t *rbuf, const char *channel,
         if (!strcmp ((char*) ositer->data, orders->sheriff_name)) break;
     }
     if (!ositer) {
-        s->observed_sheriffs_slm = g_list_prepend (s->observed_sheriffs_slm, 
+        s->observed_sheriffs_slm = g_list_prepend (s->observed_sheriffs_slm,
                     strdup (orders->sheriff_name));
     }
-    if (s->last_sheriff_name && 
+    if (s->last_sheriff_name &&
             strcmp (orders->sheriff_name, s->last_sheriff_name)) {
         free (s->last_sheriff_name);
         s->last_sheriff_name = NULL;
@@ -751,7 +751,7 @@ procman_deputy_order_received (const lcm_recv_buf_t *rbuf, const char *channel,
         bot_procman_sheriff_cmd_t *cmd = &orders->cmds[i];
 
         if (s->verbose)
-            printf ("order %d: %s (%d, %d)\n", 
+            printf ("order %d: %s (%d, %d)\n",
                     i, cmd->name, cmd->desired_runid, cmd->force_quit);
 
         // do we already have this command somewhere?
@@ -793,7 +793,7 @@ procman_deputy_order_received (const lcm_recv_buf_t *rbuf, const char *channel,
 
         // change a command's nickname?
         if (strcmp (mi->nickname, cmd->nickname)) {
-            dbgt ("setting nickname of [%s] to [%s]\n", p->cmd->str, 
+            dbgt ("setting nickname of [%s] to [%s]\n", p->cmd->str,
                     cmd->nickname);
             _set_command_nickname (p, cmd->nickname);
             action_taken = 1;
@@ -807,7 +807,7 @@ procman_deputy_order_received (const lcm_recv_buf_t *rbuf, const char *channel,
 
         // change the group of a command?
         if (strcmp (mi->group, cmd->group)) {
-            dbgt ("setting group of [%s] to [%s]\n", p->cmd->str, 
+            dbgt ("setting group of [%s] to [%s]\n", p->cmd->str,
                     cmd->group);
             _set_command_group (p, cmd->group);
             action_taken = 1;
@@ -816,11 +816,11 @@ procman_deputy_order_received (const lcm_recv_buf_t *rbuf, const char *channel,
         mi->should_be_stopped = cmd->force_quit;
 
         if (PROCMAN_CMD_STOPPED == cmd_status &&
-            (mi->actual_runid != cmd->desired_runid) && 
+            (mi->actual_runid != cmd->desired_runid) &&
             ! mi->should_be_stopped) {
             start_cmd (s, p, cmd->desired_runid);
             action_taken = 1;
-        } else if (PROCMAN_CMD_RUNNING == cmd_status && 
+        } else if (PROCMAN_CMD_RUNNING == cmd_status &&
                 (mi->should_be_stopped || (cmd->desired_runid != mi->actual_runid))) {
             stop_cmd(s, p);
             action_taken = 1;
@@ -835,7 +835,7 @@ procman_deputy_order_received (const lcm_recv_buf_t *rbuf, const char *channel,
     for (iter=procman_get_cmds (s->pm); iter; iter=iter->next) {
         procman_cmd_t *p = (procman_cmd_t*)iter->data;
         pmd_cmd_moreinfo_t *mi = (pmd_cmd_moreinfo_t*)p->user;
-        bot_procman_sheriff_cmd_t *cmd = 
+        bot_procman_sheriff_cmd_t *cmd =
             procmd_orders_find_cmd (orders, mi->sheriff_id);
 
         if (! cmd) {
@@ -979,7 +979,7 @@ int main (int argc, char **argv)
 {
     char *optstring = "hvfl:n:u:";
     int c;
-    struct option long_opts[] = { 
+    struct option long_opts[] = {
         { "help", no_argument, 0, 'h' },
         { "verbose", no_argument, 0, 'v' },
         { "log", required_argument, 0, 'l' },
@@ -994,7 +994,7 @@ int main (int argc, char **argv)
     char *lcmurl = NULL;
 
     g_thread_init(NULL);
-    
+
     while ((c = getopt_long (argc, argv, optstring, long_opts, 0)) >= 0)
     {
         switch (c) {

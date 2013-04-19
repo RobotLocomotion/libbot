@@ -34,11 +34,11 @@ lcmu_glib_mainloop_attach_lcm (lcm_t *lcm)
         return -1;
     }
 
-    glib_attached_lcm_t *galcm = 
+    glib_attached_lcm_t *galcm =
         (glib_attached_lcm_t*) calloc (1, sizeof (glib_attached_lcm_t));
 
     galcm->ioc = g_io_channel_unix_new (lcm_get_fileno (lcm));
-    galcm->sid = g_io_add_watch (galcm->ioc, G_IO_IN, (GIOFunc) lcm_message_ready, 
+    galcm->sid = g_io_add_watch (galcm->ioc, G_IO_IN, (GIOFunc) lcm_message_ready,
             lcm);
     galcm->lcm = lcm;
 
@@ -55,7 +55,7 @@ lcmu_glib_mainloop_detach_lcm (lcm_t *lcm)
         return -1;
     }
 
-    glib_attached_lcm_t *galcm = 
+    glib_attached_lcm_t *galcm =
         (glib_attached_lcm_t*) g_hash_table_lookup (lcm_glib_sources, lcm);
 
     if (!galcm) {

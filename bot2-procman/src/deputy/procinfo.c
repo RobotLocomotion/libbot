@@ -38,7 +38,7 @@ static void strsplit (char *buf, char **words, int maxwords)
 }
 
 #ifdef __linux__
-static int 
+static int
 procinfo_read_proc_cpu_mem_linux(int pid, proc_cpu_mem_t *s)
 {
     memset (s, 0, sizeof (proc_cpu_mem_t));
@@ -81,7 +81,7 @@ procinfo_read_proc_cpu_mem_linux(int pid, proc_cpu_mem_t *s)
     return 0;
 }
 
-static int 
+static int
 procinfo_read_sys_cpu_mem_linux(sys_cpu_mem_t *s)
 {
     memset (s, 0, sizeof(sys_cpu_mem_t));
@@ -100,7 +100,7 @@ procinfo_read_sys_cpu_mem_linux(sys_cpu_mem_t *s)
         }
 
         if (! strncmp (buf, "cpu ", 4)) {
-            sscanf (buf, "%s %u %u %u %u", 
+            sscanf (buf, "%s %u %u %u %u",
                     tmp,
                     &s->user,
                     &s->user_low,
@@ -263,7 +263,7 @@ procinfo_is_orphaned_child_of(int orphan, int parent)
 }
 #endif
 
-int 
+int
 procinfo_read_proc_cpu_mem (int pid, proc_cpu_mem_t *s)
 {
 #ifdef __linux__
@@ -274,7 +274,7 @@ procinfo_read_proc_cpu_mem (int pid, proc_cpu_mem_t *s)
 #endif
 }
 
-int 
+int
 procinfo_read_sys_cpu_mem (sys_cpu_mem_t *s)
 {
 #ifdef __linux__

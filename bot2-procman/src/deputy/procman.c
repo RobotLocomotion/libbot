@@ -176,8 +176,8 @@ int procman_start_cmd (procman_t *pm, procman_cmd_t *p)
             // (e.g. permission denied or bad path or something)
 
             // restore stderr so we can barf a real error message
-            close(STDERR_FILENO); 
-            dup2(stderr_backup, STDERR_FILENO); 
+            close(STDERR_FILENO);
+            dup2(stderr_backup, STDERR_FILENO);
             fprintf(stderr, "%s\n", ebuf);
             close(stderr_backup);
 
@@ -324,7 +324,7 @@ procman_check_for_dead_children (procman_t *pm, procman_cmd_t **dead_child)
 int
 procman_close_dead_pipes (procman_t *pm, procman_cmd_t *cmd)
 {
-    if (cmd->stdout_fd < 0 && cmd->stdin_fd < 0) 
+    if (cmd->stdout_fd < 0 && cmd->stdin_fd < 0)
         return 0;
 
     if (cmd->pid) {
@@ -390,7 +390,7 @@ subst_vars_has_token(subst_parse_context_t* ctx)
 }
 
 static char
-subst_vars_peek_token(subst_parse_context_t* ctx) 
+subst_vars_peek_token(subst_parse_context_t* ctx)
 {
     return subst_vars_has_token(ctx) ? ctx->w[ctx->pos] : 0;
 }
@@ -441,7 +441,7 @@ subst_vars_parse_variable(subst_parse_context_t* ctx)
             g_string_append(ctx->result, val);
         else
             ok = FALSE;
-    } 
+    }
     if(!ok)
         g_string_append_len(ctx->result, &ctx->w[start - 1], ctx->pos - start + 1);
     g_free(varname);
@@ -455,7 +455,7 @@ subst_vars_parse_variable(subst_parse_context_t* ctx)
  * first, followed by environment variable values.  If a variable expansion
  * fails, then the corresponding text is left unchanged.
  */
-static char* 
+static char*
 subst_vars(const char* w, GHashTable* vars)
 {
     subst_parse_context_t ctx;
@@ -464,7 +464,7 @@ subst_vars(const char* w, GHashTable* vars)
     ctx.pos = 0;
     ctx.result = g_string_sized_new(ctx.w_len * 2);
     ctx.variables = vars;
-    
+
     while(subst_vars_eat_token(&ctx)) {
         char c = ctx.cur_tok;
         if('\\' == c) {
@@ -575,19 +575,19 @@ procman_get_cmds (procman_t *pm) {
     return pm->commands;
 }
 
-void 
+void
 procman_set_variable(procman_t* pm, const char* name, const char* val)
 {
     g_hash_table_insert(pm->variables, g_strdup(name), g_strdup(val));
 }
 
-void 
+void
 procman_remove_variable(procman_t* pm, const char* name)
 {
     g_hash_table_remove(pm->variables, name);
 }
 
-void 
+void
 procman_remove_all_variables(procman_t* pm)
 {
     g_hash_table_remove_all(pm->variables);

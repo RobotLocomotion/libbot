@@ -12,7 +12,7 @@ extern "C" {
 /**
  * lcu_mainloop_attach_lc (lc_t *lc)
  * attaches/detaches LC to/from the glib mainloop
- * When attached, lc_handle() is invoked "automatically" when a message is 
+ * When attached, lc_handle() is invoked "automatically" when a message is
  * received over LC.
  *
  * only one instance of lc_t can be attached per process

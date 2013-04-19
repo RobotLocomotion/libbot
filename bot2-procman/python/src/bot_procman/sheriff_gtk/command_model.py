@@ -199,21 +199,21 @@ class SheriffCommandModel(gtk.TreeStore):
         cmds_rows_to_update = []
         group_rows_to_update = []
 
-        # Figure out which rows should be added/updated/removed etc... 
+        # Figure out which rows should be added/updated/removed etc...
         # On return, the cmds_to_add set will
         # contain commands that were not updated (i.e., commands that need to
         # be added into the model)
         self.foreach(self._dispatch_row_changes,
                 (cmds_to_add, cmd_rows_to_remove, cmds_rows_to_update, group_rows_to_update))
-        
+
         # update the command rows that should be updated
         for trr in cmds_rows_to_update:
             self._update_cmd_row(trr, cmd_deps, cmd_rows_to_reparent)
-        
+
         # update the group rows that should be updated
         for trr in group_rows_to_update:
             self._update_group_row(trr, cmd_deps)
-        
+
 
         # reparent rows that are in the wrong group
         for trr, newparent_rr in cmd_rows_to_reparent:

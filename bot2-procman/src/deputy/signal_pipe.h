@@ -37,14 +37,14 @@ int signal_pipe_init (void);
 // cleans up resources used by the signal_pipe
 int signal_pipe_cleanup (void);
 
-// specifies that signal should be caught by signal_pipe and converted to a 
+// specifies that signal should be caught by signal_pipe and converted to a
 // glib event
 void signal_pipe_add_signal (int signal);
 
 // sets a handler function that is called when a signal is caught by
 // signal_pipe.  The first argument to the user_func function is the number of
 // the signal caught.  The second is the user_data parameter passed in here.
-int signal_pipe_attach_glib (signal_pipe_glib_handler_t user_func, 
+int signal_pipe_attach_glib (signal_pipe_glib_handler_t user_func,
         gpointer user_data);
 
 // convenience function to setup a signal handler that calls
