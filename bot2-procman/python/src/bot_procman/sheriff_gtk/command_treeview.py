@@ -328,19 +328,37 @@ class SheriffCommandTreeView(gtk.TreeView):
                                          cur_name, cur_nickname, cur_deputy,
                                          cur_group, cur_auto_respawn)
 
-        if dlg.run () == gtk.RESPONSE_ACCEPT:
+        while dlg.run () == gtk.RESPONSE_ACCEPT:
             newname = dlg.get_command ()
-            newnickname = dlg.get_nickname ()
+            new_id = dlg.get_command_id()
             newdeputy = dlg.get_deputy ()
             newgroup = dlg.get_group ().strip ()
             newauto_respawn = dlg.get_auto_respawn ()
             cmd_ind = 0
+
+            validated = True
+            for cmd in cmds:
+                if new_id == unchanged_val:
+                    continue
+                if not self.sheriff.get_commands_by_nickname(new_id):
+                    continue
+                errdlg = gtk.MessageDialog(dlg,
+                        gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT,
+                        gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE)
+                errdlg.set_markup("Error!\n<span font_family=\"monospace\">Duplicate command id [%s]</span>" % new_id)
+                errdlg.run()
+                errdlg.destroy()
+                validated = False
+
+            if not validated:
+                continue
+
             for cmd in cmds:
                 if newname != cmd.name and newname != unchanged_val:
                     self.sheriff.set_command_exec (cmd, newname)
 
-                if newnickname != cmd.nickname and newnickname != unchanged_val:
-                    self.sheriff.set_command_nickname (cmd, newnickname)
+                if new_id != cmd.nickname and new_id != unchanged_val:
+                    self.sheriff.set_command_id (cmd, new_id)
 
                 if newauto_respawn != cmd.auto_respawn and newauto_respawn >=0:
                     self.sheriff.set_auto_respawn (cmd, newauto_respawn)
@@ -351,6 +369,7 @@ class SheriffCommandTreeView(gtk.TreeView):
                 if newgroup != cmd.group and newgroup != unchanged_val:
                     self.sheriff.set_command_group (cmd, newgroup)
                 cmd_ind = cmd_ind+1
+            break
         dlg.destroy ()
 
     def _on_cmds_tv_row_activated (self, treeview, path, column):

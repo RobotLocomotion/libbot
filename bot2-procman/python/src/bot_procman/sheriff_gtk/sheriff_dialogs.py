@@ -9,7 +9,7 @@ from bot_procman.sheriff_script import SheriffScript
 
 class AddModifyCommandDialog (gtk.Dialog):
     def __init__ (self, parent, deputies, groups,
-            initial_cmd="", initial_nickname="", initial_deputy="",
+            initial_cmd="", initial_cmd_id="", initial_deputy="",
             initial_group="", initial_auto_respawn=False):
         # add command dialog
         gtk.Dialog.__init__ (self, "Add/Modify Command", parent,
@@ -45,13 +45,13 @@ class AddModifyCommandDialog (gtk.Dialog):
                 lambda e: self.response (gtk.RESPONSE_ACCEPT))
         self.name_te.grab_focus ()
 
-        # command nickname
-        table.attach (gtk.Label ("Name"), 0, 1, 2, 3, 0, 0)
-        self.nickname_te = gtk.Entry ()
-        self.nickname_te.set_text (initial_nickname)
-        self.nickname_te.set_width_chars (60)
-        table.attach (self.nickname_te, 1, 2, 2, 3)
-        self.nickname_te.connect ("activate",
+        # command id
+        table.attach (gtk.Label ("Id"), 0, 1, 2, 3, 0, 0)
+        self.cmd_id_te = gtk.Entry ()
+        self.cmd_id_te.set_text (initial_cmd_id)
+        self.cmd_id_te.set_width_chars (60)
+        table.attach (self.cmd_id_te, 1, 2, 2, 3)
+        self.cmd_id_te.connect ("activate",
                 lambda e: self.response (gtk.RESPONSE_ACCEPT))
 
         # group
@@ -88,7 +88,7 @@ class AddModifyCommandDialog (gtk.Dialog):
         return model[active][0]
 
     def get_command (self): return self.name_te.get_text ()
-    def get_nickname (self): return self.nickname_te.get_text ()
+    def get_command_id (self): return self.cmd_id_te.get_text ()
     def get_group (self): return self.group_cbe.child.get_text ()
     def get_auto_respawn (self):
         if self.auto_respawn_cb.get_inconsistent():
@@ -144,30 +144,36 @@ def do_add_command_dialog(sheriff, cmds_ts, window):
         msgdlg.destroy ()
         return
     deputy_names = [deputy.name for deputy in deputies ]
+
+    # pick an initial command id
+    existing_ids = set([ cmd.nickname for cmd in sheriff.get_all_commands() ])
+    initial_cmd_id = ""
+    for i in range(len(existing_ids) + 1):
+        initial_cmd_id = "command_%d" % i
+        if initial_cmd_id not in existing_ids:
+            break
+    assert initial_cmd_id and initial_cmd_id not in existing_ids
+
     dlg = AddModifyCommandDialog (window, deputy_names,
-            cmds_ts.get_known_group_names ())
+            cmds_ts.get_known_group_names(), initial_cmd_id = initial_cmd_id)
+
     while dlg.run () == gtk.RESPONSE_ACCEPT:
         cmd = dlg.get_command ()
-        cmd_nickname = dlg.get_nickname()
+        cmd_id = dlg.get_command_id()
         deputy_name = dlg.get_deputy ()
         group = dlg.get_group ().strip ()
         auto_respawn = dlg.get_auto_respawn ()
-        if not cmd.strip ():
-            msgdlg = gtk.MessageDialog (window,
-                    gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT,
-                    gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE, "Invalid command")
-            msgdlg.run ()
-            msgdlg.destroy ()
-        elif not deputy:
-            msgdlg = gtk.MessageDialog (window,
-                    gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT,
-                    gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE, "Invalid deputy")
-            msgdlg.run ()
-            msgdlg.destroy ()
-        else:
-            sheriff.add_command (deputy_name, cmd, cmd_nickname, group, auto_respawn)
+
+        try:
+            sheriff.add_command (deputy_name, cmd, cmd_id, group, auto_respawn)
             break
-    dlg.destroy ()
+        except ValueError, xcp:
+            msgdlg = gtk.MessageDialog(window,
+                    gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT,
+                    gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE, str(xcp))
+            msgdlg.run()
+            msgdlg.destroy()
+    dlg.destroy()
 
 class AddModifyScriptDialog (gtk.Dialog):
     def __init__ (self, parent, script):
@@ -219,7 +225,7 @@ class AddModifyScriptDialog (gtk.Dialog):
 
 #    Refer to commands and groups by what appears in the Name column.
 #    Valid actions are:
-#        start|stop|restart cmd|group "nickname" [wait "running"|"stopped"];
+#        start|stop|restart cmd|group "cmd_id" [wait "running"|"stopped"];
 #        wait ms ###;
 #        run_script "other-script-name";
 

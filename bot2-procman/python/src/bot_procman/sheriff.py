@@ -550,7 +550,7 @@ class Sheriff(gobject.GObject):
 
         @param deputy_name the name of the deputy that will manage this command.
         @param cmd_exec the actual command string to execute.
-        @param cmd_id an identifier string for this command.
+        @param cmd_id an identifier string for this command.  Must be different from all other command ids.
         @param group the command group name, or the empty string for no group.
         @param auto_respawn True if the deputy should automatically restart the
         command when it exits.  Auto respawning only happens when the desired
@@ -559,6 +559,16 @@ class Sheriff(gobject.GObject):
         """
         if self._is_observer:
             raise ValueError("Can't add commands in Observer mode")
+
+        if not cmd_exec:
+            raise ValueError("Invalid command")
+        if not cmd_id:
+            raise ValueError("Invalid command id")
+        if self.get_commands_by_nickname(cmd_id):
+            raise ValueError("Duplicate command id %s" % cmd_id)
+        if not deputy_name:
+            raise ValueError("Invalid deputy")
+
         dep = self._get_or_make_deputy(deputy_name)
         newcmd = SheriffDeputyCommand()
         newcmd.name = cmd_exec
@@ -645,13 +655,15 @@ class Sheriff(gobject.GObject):
         """
         cmd.name = new_exec
 
-    def set_command_nickname(self, cmd, new_nickname):
-        """Set the command nickname.
+    def set_command_id(self, cmd, new_id):
+        """Set the command id.
 
         @param cmd a SheriffDeputyCommand object.
-        @param new_nickname the new nickname to identify a command with.
+        @param new_id the new id to identify a command with.
         """
-        cmd.nickname = new_nickname
+        if self.get_commands_by_nickname(new_id):
+            raise ValueError("Duplicate id [%s]" % new_id)
+        cmd.nickname = new_id
 
     def set_command_group(self, cmd, group_name):
         """Set the command group.
