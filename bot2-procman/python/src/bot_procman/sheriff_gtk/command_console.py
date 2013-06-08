@@ -121,7 +121,7 @@ class SheriffCommandConsole(gtk.ScrolledWindow):
                         (extradata.printf_drop_count))
                 self._add_text_to_buffer (self.sheriff_tb, now_str() +
                         "Ignored %d bytes of output from [%s] [%s]\n" % \
-                        (extradata.printf_drop_count, deputy.name, cmd.name))
+                        (extradata.printf_drop_count, deputy.name, cmd.command_id))
 
             extradata.printf_keep_count.pop (0)
             extradata.printf_keep_count.append (0)
@@ -176,17 +176,16 @@ class SheriffCommandConsole(gtk.ScrolledWindow):
         extradata = CommandExtraData (self.sheriff_tb.get_tag_table())
         command.set_data ("extradata", extradata)
         self._add_text_to_buffer (self.sheriff_tb, now_str() +
-                "Added [%s] [%s]\n" % (deputy.name, command.name))
+                "Added [%s] [%s] [%s]\n" % (deputy.name, command.command_id, command.exec_str))
 
     def _on_sheriff_command_removed (self, sheriff, deputy, command):
         self._add_text_to_buffer (self.sheriff_tb, now_str() +
-                "[%d] removed (%s:%s)\n" % (command.sheriff_id,
-                deputy.name, command.name))
+                "[%s] removed [%s] [%s]\n" % (deputy.name, command.command_id, command.exec_str))
 
     def _on_sheriff_command_status_changed (self, sheriff, cmd,
             old_status, new_status):
         self._add_text_to_buffer (self.sheriff_tb, now_str() +
-                "[%s] new status: %s\n" % (cmd.name, new_status))
+                "[%s] new status: %s\n" % (cmd.command_id, new_status))
 
     def on_tb_populate_menu(self,textview, menu):
         sep = gtk.SeparatorMenuItem()
@@ -240,7 +239,7 @@ class SheriffCommandConsole(gtk.ScrolledWindow):
         msg = printf_t.decode (data)
         if msg.sheriff_id:
             try:
-                cmd = self.sheriff.get_command_by_id (msg.sheriff_id)
+                cmd = self.sheriff.get_command_by_sheriff_id(msg.sheriff_id)
             except KeyError:
                 # TODO
                 return

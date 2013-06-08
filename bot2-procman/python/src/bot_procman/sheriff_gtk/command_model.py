@@ -6,7 +6,7 @@ import bot_procman.sheriff as sheriff
 COL_CMDS_TV_OBJ, \
 COL_CMDS_TV_EXEC, \
 COL_CMDS_TV_FULL_GROUP, \
-COL_CMDS_TV_DISPLAY_NAME, \
+COL_CMDS_TV_COMMAND_ID, \
 COL_CMDS_TV_HOST, \
 COL_CMDS_TV_STATUS_ACTUAL, \
 COL_CMDS_TV_CPU_USAGE, \
@@ -32,7 +32,7 @@ class SheriffCommandModel(gtk.TreeStore):
         self.group_row_references = {}
         self.populate_exec_with_group_name = False
 
-        self.set_sort_column_id(COL_CMDS_TV_DISPLAY_NAME, gtk.SORT_ASCENDING)
+        self.set_sort_column_id(COL_CMDS_TV_COMMAND_ID, gtk.SORT_ASCENDING)
 
     def _find_or_make_group_row_reference(self, group_name):
         if not group_name:
@@ -53,12 +53,10 @@ class SheriffCommandModel(gtk.TreeStore):
             else:
                 exec_val = ""
 
-            # add the group name to the command name column if visible
-            # otherwise, add it to the nickname column
             new_row = (None,                    # COL_CMDS_TV_OBJ
                       exec_val,                 # COL_CMDS_TV_EXEC
                       group_name,               # COL_CMDS_TV_FULL_GROUP
-                      name_parts[-1],           # COL_CMDS_TV_DISPLAY_NAME
+                      name_parts[-1],           # COL_CMDS_TV_COMMAND_ID
                       "",                       # COL_CMDS_TV_HOST
                       "",                       # COL_CMDS_TV_STATUS_ACTUAL
                       "",                       # COL_CMDS_TV_CPU_USAGE
@@ -92,14 +90,14 @@ class SheriffCommandModel(gtk.TreeStore):
         cpu_str = "%.2f" % (cmd.cpu_usage * 100)
         mem_usage = int(cmd.mem_vsize_bytes / 1024)
 
-        if cmd.nickname.strip():
-            display_name = cmd.nickname
+        if cmd.command_id.strip():
+            command_id = cmd.command_id
         else:
-            display_name = "<unnamed>"
+            command_id = "<unnamed>"
 
         self.set(model_iter,
-                COL_CMDS_TV_EXEC, cmd.name,
-                COL_CMDS_TV_DISPLAY_NAME, display_name,
+                COL_CMDS_TV_EXEC, cmd.exec_str,
+                COL_CMDS_TV_COMMAND_ID, command_id,
                 COL_CMDS_TV_STATUS_ACTUAL, cmd.status (),
                 COL_CMDS_TV_HOST, cmd_deps[cmd].name,
                 COL_CMDS_TV_CPU_USAGE, cpu_str,
@@ -164,7 +162,7 @@ class SheriffCommandModel(gtk.TreeStore):
 
         # display group name in command column?
         if self.populate_exec_with_group_name:
-            exec_val = self.get_value(model_iter, COL_CMDS_TV_DISPLAY_NAME)
+            exec_val = self.get_value(model_iter, COL_CMDS_TV_COMMAND_ID)
         else:
             exec_val = ""
 
@@ -246,9 +244,9 @@ class SheriffCommandModel(gtk.TreeStore):
             parent = self._find_or_make_group_row_reference(cmd.group)
 
             new_row = (cmd,        # COL_CMDS_TV_OBJ
-                cmd.name,          # COL_CMDS_TV_EXEC
+                cmd.exec_str,      # COL_CMDS_TV_EXEC
                 "",                # COL_CMDS_TV_FULL_GROUP
-                cmd.nickname,      # COL_CMDS_TV_DISPLAY_NAME
+                cmd.command_id,    # COL_CMDS_TV_COMMAND_ID
                 deputy.name,       # COL_CMDS_TV_HOST
                 cmd.status (),     # COL_CMDS_TV_STATUS_ACTUAL
                 "0",               # COL_CMDS_TV_CPU_USAGE

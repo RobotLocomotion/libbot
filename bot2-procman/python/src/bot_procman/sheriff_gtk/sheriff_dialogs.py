@@ -87,14 +87,20 @@ class AddModifyCommandDialog (gtk.Dialog):
         if active < 0: return None
         return model[active][0]
 
-    def get_command (self): return self.name_te.get_text ()
-    def get_command_id (self): return self.cmd_id_te.get_text ()
-    def get_group (self): return self.group_cbe.child.get_text ()
-    def get_auto_respawn (self):
+    def get_command(self):
+        return self.name_te.get_text ()
+
+    def get_command_id (self):
+        return self.cmd_id_te.get_text().strip()
+
+    def get_group(self):
+        return self.group_cbe.child.get_text().strip()
+
+    def get_auto_respawn(self):
         if self.auto_respawn_cb.get_inconsistent():
             return -1
         else:
-             return self.auto_respawn_cb.get_active ()
+             return self.auto_respawn_cb.get_active()
 
 class PreferencesDialog(gtk.Dialog):
     def __init__ (self, sheriff_gtk, parent):
@@ -146,7 +152,7 @@ def do_add_command_dialog(sheriff, cmds_ts, window):
     deputy_names = [deputy.name for deputy in deputies ]
 
     # pick an initial command id
-    existing_ids = set([ cmd.nickname for cmd in sheriff.get_all_commands() ])
+    existing_ids = set([ cmd.command_id for cmd in sheriff.get_all_commands() ])
     initial_cmd_id = ""
     for i in range(len(existing_ids) + 1):
         initial_cmd_id = "command_%d" % i
