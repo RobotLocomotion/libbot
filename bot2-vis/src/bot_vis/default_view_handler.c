@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <math.h>
 #ifdef __APPLE__
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>
@@ -18,9 +18,10 @@
 #include "default_view_handler.h"
 
 #define EYE_MIN_DIST 0.1
-#define EYE_MAX_DIST 10000
+#define EYE_MAX_DIST 150
 #define EYE_ZOOM_INC (EYE_MAX_DIST - EYE_MIN_DIST) / 100
-
+#define MAX_MOTION_MAGNITUDE 2.0
+#define MIN_MOTION_MAGNITUDE 0.0001
 BotProjectionMode projection_mode;
 
 // column-major (opengl compatible) order.  We need this because we
@@ -162,12 +163,19 @@ static void window_space_pan(BotDefaultViewHandler *dvh, double dq[], double x, 
 
     memcpy(motionleft, left, 3 * sizeof(double));
     bot_vector_scale_3d(motionleft, sol[1]);
-
+   
     bot_vector_add_3d(motionup, motionleft, motion);
+    
 
+    double magnitude = bot_vector_magnitude_3d(motion);
+    double new_magnitude = fmax(fmin(magnitude,MAX_MOTION_MAGNITUDE),MIN_MOTION_MAGNITUDE);
+    //bot_vector_normalize_3d(motion); // if magnitude is zero it will return nan's
+    bot_vector_scale_3d(motion,new_magnitude/fmax(magnitude,MIN_MOTION_MAGNITUDE));
+    
     double neweye[3], newlookat[3];
     bot_vector_subtract_3d(dvh->eye, motion, neweye);
     bot_vector_subtract_3d(dvh->lookat, motion, newlookat);
+
 
     memcpy(dvh->eye, neweye, sizeof(double)*3);
     memcpy(dvh->lookat, newlookat, sizeof(double)*3);
@@ -178,12 +186,16 @@ static void window_space_pan(BotDefaultViewHandler *dvh, double dq[], double x, 
     // then just reject it.  this is better than letting the
     // projection become singular! (This only happens with preserveZ?)
     double detNew = A[0]*A[3] - A[1]*A[2];
-    if (fabs(detNew) < 0.01 && fabs(detNew) <= fabs(detOriginal)) {
+    //printf(" %15f %15f\n", detOriginal, detNew);
+    //if (fabs(detNew) < 0.01 && fabs(detNew) <= fabs(detOriginal)) {
+    if ((fabs(detNew) < 25 )||(fabs(detOriginal) < 25 )) { 
         memcpy(dvh->eye, orig_eye, 3 * sizeof(double));
         memcpy(dvh->lookat, orig_lookat, 3 * sizeof(double));
         look_at_changed(dvh);
         printf("skipping pan: %15f %15f\n", detOriginal, detNew);
     }
+    
+    
 }
 
 static int mouse_press   (BotViewer *viewer, BotEventHandler *ehandler, 
