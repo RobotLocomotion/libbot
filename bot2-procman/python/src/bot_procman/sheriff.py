@@ -24,6 +24,9 @@ def _dbg(text):
     return
     #sys.stderr.write("%s\n" % text)
 
+def _warn(text):
+    sys.stderr.write("[WARNING] %s\n" % text)
+
 def _now_utime():
     return int(time.time() * 1000000)
 
@@ -565,7 +568,7 @@ class Sheriff(gobject.GObject):
         if not cmd_id:
             raise ValueError("Invalid command id")
         if self.get_commands_by_deputy_and_id(deputy_name, cmd_id):
-            raise ValueError("Duplicate command id %s" % cmd_id)
+            _warn("Duplicate command id %s in group [%s]" % (cmd_id, group))
         if not deputy_name:
             raise ValueError("Invalid deputy")
 
@@ -664,7 +667,7 @@ class Sheriff(gobject.GObject):
         if not new_id.strip():
             raise ValueError("Empty command id not allowed")
         if self.get_commands_by_id(new_id):
-            raise ValueError("Duplicate id [%s]" % new_id)
+            _warn("Duplicate command id [%s]" % new_id)
         cmd.command_id = new_id
 
     def set_command_group(self, cmd, group_name):
