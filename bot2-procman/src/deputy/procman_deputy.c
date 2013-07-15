@@ -319,7 +319,7 @@ stop_cmd (procman_deputy_t *pmd, procman_cmd_t *cmd)
     int64_t now = timestamp_now();
     int status;
     if(!mi->first_kill_time) {
-        status = procman_kill_cmd (pmd->pm, cmd, SIGINT);
+        status = procman_kill_cmd (pmd->pm, cmd, SIGTERM);
         mi->first_kill_time = now;
         mi->num_kills_sent++;
     } else if(now > mi->first_kill_time + 7000000) {
@@ -434,13 +434,13 @@ glib_handle_signal (int signal, procman_deputy_t *pmd) {
         dbgt ("received signal %d (%s).  stopping all processes\n", signal,
                 strsignal (signal));
 
-        // first, send everything a SIGINT to give them a chance to exit
+        // first, send everything a SIGTERM to give them a chance to exit
         // cleanly.
         const GList *all_cmds = procman_get_cmds (pmd->pm);
         for (const GList *iter=all_cmds; iter; iter=iter->next) {
             procman_cmd_t *cmd = (procman_cmd_t*)iter->data;
             if (cmd->pid) {
-                procman_kill_cmd (pmd->pm, cmd, SIGINT);
+                procman_kill_cmd (pmd->pm, cmd, SIGTERM);
             }
         }
         pmd->exiting = 1;
