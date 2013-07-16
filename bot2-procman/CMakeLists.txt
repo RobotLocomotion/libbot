@@ -9,5 +9,6 @@ include(cmake/pods.cmake)
 include(cmake/lcmtypes.cmake)
 lcmtypes_build(PY_DEST_DIR ${PROJECT_SOURCE_DIR}/python/src)
 
+
 add_subdirectory(src/deputy)
 add_subdirectory(python)

@@ -12,3 +12,8 @@ from deputy_cmd_t import deputy_cmd_t
 from sheriff import Sheriff
 from sheriff_script import SheriffScript
 from discovery_t import discovery_t
+from orders2_t import orders2_t
+from sheriff_cmd2_t import sheriff_cmd2_t
+from command2_t import command2_t
+from deputy_cmd2_t import deputy_cmd2_t
+from info2_t import info2_t
