@@ -21,6 +21,7 @@ from bot_procman.command2_t import command2_t
 from bot_procman.info2_t import info2_t
 from bot_procman.orders2_t import orders2_t
 from bot_procman.sheriff_cmd2_t import sheriff_cmd2_t
+from bot_procman.deputy_cmd2_t import deputy_cmd2_t
 import bot_procman.sheriff_config as sheriff_config
 from bot_procman.sheriff_script import SheriffScript
 
@@ -178,7 +179,7 @@ class SheriffDeputy(gobject.GObject):
         self.phys_mem_total_bytes = 0
         self.phys_mem_free_bytes = 0
         self.variables = {}
-        self._orders_version = 0
+        self._orders_version = 2
 
     def get_commands(self):
         """Retrieve a list of all commands managed by the deputy
@@ -544,8 +545,7 @@ class Sheriff(gobject.GObject):
                             % cmd.command_id)
                     break
 
-        if not deputy.last_update_utime:
-            deputy.set_orders_version(version)
+        deputy.set_orders_version(version)
 
         status_changes = deputy.update_from_deputy_info2(info_msg)
 
@@ -582,7 +582,8 @@ class Sheriff(gobject.GObject):
         new_info_msg.cmds = []
         for cmd_index, cmd_info in enumerate(dep_info.cmds):
             cmd_msg = dep_info.cmds[cmd_index]
-            new_cmd_msg = command2_t()
+            new_cmd_msg = deputy_cmd2_t()
+            new_cmd_msg.cmd = command2_t()
             new_cmd_msg.cmd.exec_str = cmd_msg.name
             new_cmd_msg.cmd.command_name = cmd_msg.nickname
             new_cmd_msg.cmd.group = cmd_msg.group
@@ -681,13 +682,12 @@ class Sheriff(gobject.GObject):
             if deputy.last_update_utime > 0:
 
                 version = deputy.get_orders_version()
-                if version != 2:
+                if version == 1:
                     msg = deputy._make_orders_message(self.name)
                     self.comms.publish("PMD_ORDERS", msg.encode())
-
-                if version != 1:
-                    msg2 = deputy._make_orders2_message(self.name)
-                    self.comms.publish("PMD_ORDERS2", msg2.encode())
+                else:
+                    msg = deputy._make_orders2_message(self.name)
+                    self.comms.publish("PMD_ORDERS2", msg.encode())
 
     def add_command(self, deputy_name, exec_str, cmd_id, group, auto_respawn):
         """Add a new command.
