@@ -6,6 +6,7 @@ import gtk
 
 from bot_procman.sheriff_config import Parser, ScriptNode
 from bot_procman.sheriff_script import SheriffScript
+from bot_procman.sheriff import SheriffCommandSpec
 
 class AddModifyCommandDialog (gtk.Dialog):
     def __init__ (self, parent, deputies, groups,
@@ -164,14 +165,15 @@ def do_add_command_dialog(sheriff, cmds_ts, window):
             cmds_ts.get_known_group_names(), initial_cmd_id = initial_cmd_id)
 
     while dlg.run () == gtk.RESPONSE_ACCEPT:
-        cmd = dlg.get_command ()
-        cmd_id = dlg.get_command_id()
-        deputy_name = dlg.get_deputy ()
-        group = dlg.get_group ().strip ()
-        auto_respawn = dlg.get_auto_respawn ()
+        spec = SheriffCommandSpec()
+        spec.exec_str = dlg.get_command()
+        spec.command_id = dlg.get_command_id()
+        spec.deputy_name = dlg.get_deputy()
+        spec.group_name = dlg.get_group().strip()
+        spec.auto_respawn = dlg.get_auto_respawn ()
 
         try:
-            sheriff.add_command (deputy_name, cmd, cmd_id, group, auto_respawn)
+            sheriff.add_command(spec)
             break
         except ValueError, xcp:
             msgdlg = gtk.MessageDialog(window,

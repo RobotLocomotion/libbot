@@ -44,8 +44,41 @@ STOPPED_ERROR = "Stopped (Error)"
 UNKNOWN = "Unknown"
 RESTARTING = "Command Sent"
 
-_DEFAULT_STOP_SIGNAL = 2
-_DEFAULT_STOP_TIME_ALLOWED = 7
+DEFAULT_STOP_SIGNAL = 2
+DEFAULT_STOP_TIME_ALLOWED = 7
+
+class SheriffCommandSpec(object):
+    __slots__ = [ "deputy_name", "exec_str", "command_id", "group_name",
+            "auto_respawn", "stop_signal", "stop_time_allowed" ]
+
+    def __init__(self):
+
+        ## the name of the deputy that will manage this command.
+        self.deputy_name = ""
+
+        ## the actual command string to execute.
+        self.exec_str = ""
+
+        ## an identifier string for this command.  Must be unique within a deputy.
+        self.command_id = ""
+
+        ## the command group name, or the empty string for no group.
+        self.group_name = ""
+
+        ## True if the deputy should automatically restart the
+        # command when it exits.  Auto respawning only happens when the desired
+        # state of the command is running.
+        self.auto_respawn = False
+
+        ## When stopping the command, this OS-level signal will be sent to the
+        # command to request a clean exit.  The default is SIGINT
+        self.stop_signal = DEFAULT_STOP_SIGNAL
+
+        ## When stopping the command, the deputy will wait this amount of time
+        # (seconds) in between requesting a clean exit and forcing the command
+        # to stop via a SIGKILL
+        self.stop_time_allowed = DEFAULT_STOP_TIME_ALLOWED
+
 
 class SheriffDeputyCommand(gobject.GObject):
     """A command managed by a deputy, which is in turn managed by the %Sheriff.
@@ -71,8 +104,8 @@ class SheriffDeputyCommand(gobject.GObject):
         self.scheduled_for_removal = False
         self.actual_runid = 0
         self.auto_respawn = False
-        self.stop_signal = _DEFAULT_STOP_SIGNAL
-        self.stop_time_allowed = _DEFAULT_STOP_TIME_ALLOWED
+        self.stop_signal = DEFAULT_STOP_SIGNAL
+        self.stop_time_allowed = DEFAULT_STOP_TIME_ALLOWED
         self.updated_from_info = False
 
     def update_from_cmd_info2(self, cmd_msg):
@@ -588,8 +621,8 @@ class Sheriff(gobject.GObject):
             new_cmd_msg.cmd.command_name = cmd_msg.nickname
             new_cmd_msg.cmd.group = cmd_msg.group
             new_cmd_msg.cmd.auto_respawn = cmd_msg.auto_respawn
-            new_cmd_msg.cmd.stop_signal = _DEFAULT_STOP_SIGNAL
-            new_cmd_msg.cmd.stop_time_allowed = _DEFAULT_STOP_TIME_ALLOWED
+            new_cmd_msg.cmd.stop_signal = DEFAULT_STOP_SIGNAL
+            new_cmd_msg.cmd.stop_time_allowed = DEFAULT_STOP_TIME_ALLOWED
             new_cmd_msg.cmd.num_options = 0
             new_cmd_msg.cmd.option_names = []
             new_cmd_msg.cmd.option_values = []
@@ -634,8 +667,8 @@ class Sheriff(gobject.GObject):
             new_cmd_msg.cmd.command_name = cmd_msg.nickname
             new_cmd_msg.cmd.group = cmd_msg.group
             new_cmd_msg.cmd.auto_respawn = cmd_msg.auto_respawn
-            new_cmd_msg.cmd.stop_signal = _DEFAULT_STOP_SIGNAL
-            new_cmd_msg.cmd.stop_time_allowed = _DEFAULT_STOP_TIME_ALLOWED
+            new_cmd_msg.cmd.stop_signal = DEFAULT_STOP_SIGNAL
+            new_cmd_msg.cmd.stop_time_allowed = DEFAULT_STOP_TIME_ALLOWED
             new_cmd_msg.cmd.num_options = 0
             new_cmd_msg.cmd.option_names = []
             new_cmd_msg.cmd.option_values = []
@@ -689,37 +722,35 @@ class Sheriff(gobject.GObject):
                     msg = deputy._make_orders2_message(self.name)
                     self.comms.publish("PMD_ORDERS2", msg.encode())
 
-    def add_command(self, deputy_name, exec_str, cmd_id, group, auto_respawn):
+    def add_command(self, spec):
         """Add a new command.
 
-        @param deputy_name the name of the deputy that will manage this command.
-        @param exec_str the actual command string to execute.
-        @param cmd_id an identifier string for this command.  Must be unique within a deputy.
-        @param group the command group name, or the empty string for no group.
-        @param auto_respawn True if the deputy should automatically restart the
-        command when it exits.  Auto respawning only happens when the desired
-        state of the command is running.
+        @param spec a SheriffCommandSpec that describes the new command to add
+
         @return a SheriffDeputyCommand object representing the command.
         """
         if self._is_observer:
             raise ValueError("Can't add commands in Observer mode")
 
-        if not exec_str:
+        if not spec.exec_str:
             raise ValueError("Invalid command")
-        if not cmd_id:
+        if not spec.command_id:
             raise ValueError("Invalid command id")
-        if self.get_commands_by_deputy_and_id(deputy_name, cmd_id):
-            _warn("Duplicate command id %s in group [%s]" % (cmd_id, group))
-        if not deputy_name:
+        if self.get_commands_by_deputy_and_id(spec.deputy_name, spec.command_id):
+            _warn("Duplicate command id %s in group [%s]" % (spec.command_id, spec.group_name))
+        if not spec.deputy_name:
             raise ValueError("Invalid deputy")
 
-        dep = self._get_or_make_deputy(deputy_name)
+        dep = self._get_or_make_deputy(spec.deputy_name)
         newcmd = SheriffDeputyCommand()
-        newcmd.exec_str = exec_str
-        newcmd.command_id = cmd_id
-        newcmd.group = group
+        newcmd.exec_str = spec.exec_str
+        newcmd.command_id = spec.command_id
+        newcmd.group = spec.group_name
+        print("newcmd.group: %s" % newcmd.group)
         newcmd.sheriff_id = self.__get_free_sheriff_id()
-        newcmd.auto_respawn = auto_respawn
+        newcmd.auto_respawn = spec.auto_respawn
+        newcmd.stop_signal = spec.stop_signal
+        newcmd.stop_time_allowed = spec.stop_time_allowed
         dep.add_command(newcmd)
         self.emit("command-added", dep, newcmd)
         self.send_orders()
@@ -869,8 +900,15 @@ class Sheriff(gobject.GObject):
         @return the newly created command
         """
         self.schedule_command_for_removal(cmd)
-        return self.add_command(newdeputy_name, cmd.exec_str, cmd.command_id, cmd.group,
-                cmd.auto_respawn)
+        spec = SheriffCommandSpec()
+        spec.deputy_name = newdeputy_name
+        spec.exec_str = cmd.exec_str
+        spec.command_id = cmd.command_id
+        spec.group_name = cmd.group
+        spec.auto_respawn = cmd.auto_respawn
+        spec.stop_signal = cmd.stop_signal
+        spec.stop_time_allowed = cmd.stop_time_allowed
+        return self.add_command(spec)
 
     def set_observer(self, is_observer):
         """Set the sheriff into observation mode, or remove it from observation
@@ -1262,39 +1300,47 @@ class Sheriff(gobject.GObject):
 
         commands_to_add = []
 
-        def add_group_commands(group, name_prefix):
-            for cmd in group.commands:
-                auto_respawn = cmd.attributes.get("auto_respawn", "").lower() in [ "true", "yes" ]
-                assert group.name == cmd.attributes["group"]
+        def add_group_commands(group_node, name_prefix):
+            for cmd_node in group_node.commands:
+                auto_respawn = cmd_node.attributes.get("auto_respawn", "").lower() in [ "true", "yes" ]
+                assert group_node.name == cmd_node.attributes["group"]
 
                 add_command = True
 
                 # if merging is enabled, then only add this command if we don't
                 # have an entry for it already.
                 if merge_with_existing:
-                    cmdstr = "%s!%s!%s!%s!%s" % (cmd.attributes["host"], cmd.attributes["exec"],
-                            cmd.attributes["nickname"], name_prefix + group.name, str(auto_respawn))
+                    cmdstr = "%s!%s!%s!%s!%s" % (cmd_node.attributes["host"], cmd_node.attributes["exec"],
+                            cmd_node.attributes["nickname"], name_prefix + group_node.name, str(auto_respawn))
                     if cmdstr in current_command_strs:
                         add_command = False
 
                 if add_command:
-                    commands_to_add.append((cmd.attributes["host"],
-                        cmd.attributes["exec"],
-                        cmd.attributes["nickname"],
-                        name_prefix + group.name,
-                        auto_respawn
-                        ))
+                    spec = SheriffCommandSpec()
+                    spec.deputy_name = cmd_node.attributes["host"]
+                    spec.exec_str = cmd_node.attributes["exec"]
+                    spec.command_id = cmd_node.attributes["nickname"]
+                    spec.group_name = name_prefix + group_node.name
+                    spec.auto_respawn = auto_respawn
+                    spec.stop_signal = cmd_node.attributes["stop_signal"]
+                    spec.stop_time_allowed = cmd_node.attributes["stop_time_allowed"]
+                    if spec.stop_signal == 0:
+                        spec.stop_signal = DEFAULT_STOP_SIGNAL
+                    if spec.stop_time_allowed == 0:
+                        spec.stop_time_allowed = DEFAULT_STOP_TIME_ALLOWED
 
-            for subgroup in group.subgroups.values():
-                if group.name:
-                    add_group_commands(subgroup, name_prefix + group.name + "/")
+                    commands_to_add.append(spec)
+
+            for subgroup in group_node.subgroups.values():
+                if group_node.name:
+                    add_group_commands(subgroup, name_prefix + group_node.name + "/")
                 else:
                     add_group_commands(subgroup, "")
 
         add_group_commands(config_node.root_group, "")
 
-        for specs in commands_to_add:
-            self.add_command(*specs)
+        for spec in commands_to_add:
+            self.add_command(spec)
 #            _dbg("[%s] %s (%s) -> %s" % (newcmd.group, newcmd.exec_str, newcmd.nickname, cmd.attributes["host"]))
 
         for script_node in config_node.scripts.values():

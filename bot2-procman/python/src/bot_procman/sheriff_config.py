@@ -150,6 +150,8 @@ class CommandNode(object):
                 "host" : None,
                 "group" : "",
                 "nickname" : "",
+                "stop_signal" : 0,
+                "stop_time_allowed" : 0
                 }
 
     def to_config_string(self, indent = 0):
@@ -390,7 +392,8 @@ class Parser:
         if not self._eat_token (TokIdentifier):
             return
         attrib_name = self._cur_tok.val
-        if attrib_name not in [ "exec", "host", "nickname", "auto_respawn", "group" ]:
+        if attrib_name not in [ "exec", "host", "nickname", "auto_respawn",
+                "group", "stop_signal", "stop_time_allowed" ]:
             self._fail("Unrecognized attribute %s" % attrib_name)
 
         self._eat_token_or_fail(TokAssign, "Expected '='")
@@ -401,6 +404,16 @@ class Parser:
                 self._fail("Command already has a nickname %s" % cmd.attributes["nickname"])
             if "/" in attrib_val:
                 self._fail("'/' character not allowed in command name")
+        elif attrib_name == "stop_signal":
+            try:
+                attrib_val = int(attrib_val)
+            except ValueError:
+                self._fail("Invalid value specified for command attribute 'stop_signal'")
+        elif attrib_name == "stop_time_allowed":
+            try:
+                attrib_val = float(attrib_val)
+            except ValueError:
+                self._fail("Invalid value specified for command attribute 'stop_time_allwoed'")
         cmd.attributes[attrib_name] = attrib_val
 
         return self._parse_command_param_list (cmd)
