@@ -284,6 +284,8 @@ class SheriffCommandTreeView(gtk.TreeView):
         old_command_ids = [cmd.command_id for cmd in cmds]
         old_groups = [cmd.group for cmd in cmds]
         old_auto_respawns = [cmd.auto_respawn for cmd in cmds]
+        old_stop_signals = [cmd.stop_signal for cmd in cmds]
+        old_stop_times_allowed = [cmd.stop_time_allowed for cmd in cmds]
 
         # handle all same/different deputies
         if all(x == old_deputies[0] for x in old_deputies):
@@ -313,6 +315,7 @@ class SheriffCommandTreeView(gtk.TreeView):
         else:
             cur_command_id = unchanged_val
 
+        # auto respawn
         if all(x == old_auto_respawns[0] for x in old_auto_respawns):
             if (old_auto_respawns[0]):
                 cur_auto_respawn = 1
@@ -321,13 +324,26 @@ class SheriffCommandTreeView(gtk.TreeView):
         else:
             cur_auto_respawn = -1
 
+        # stop signal
+        if all(x == old_stop_signals[0] for x in old_stop_signals):
+            cur_stop_signal = old_stop_signals[0]
+        else:
+            cur_stop_signal = unchanged_val
+
+        # stop time allowed
+        if all(x == old_stop_times_allowed[0] for x in old_stop_times_allowed):
+            cur_stop_time_allowed = old_stop_times_allowed[0]
+        else:
+            cur_stop_time_allowed = unchanged_val
 
         # create the dialog box
         dlg = sd.AddModifyCommandDialog (self.get_toplevel(),
                                          deputies_list,
                                          groups_list,
                                          cur_exec_str, cur_command_id, cur_deputy,
-                                         cur_group, cur_auto_respawn)
+                                         cur_group, cur_auto_respawn,
+                                         cur_stop_signal,
+                                         cur_stop_time_allowed)
 
         while dlg.run () == gtk.RESPONSE_ACCEPT:
             new_exec_str = dlg.get_command()
@@ -335,6 +351,8 @@ class SheriffCommandTreeView(gtk.TreeView):
             newdeputy = dlg.get_deputy()
             newgroup = dlg.get_group()
             newauto_respawn = dlg.get_auto_respawn()
+            new_stop_signal = dlg.get_stop_signal()
+            new_stop_time_allowed = dlg.get_stop_time_allowed()
             cmd_ind = 0
 
             validated = True
@@ -377,6 +395,13 @@ class SheriffCommandTreeView(gtk.TreeView):
 
                 if newgroup != cmd.group and newgroup != unchanged_val:
                     self.sheriff.set_command_group(cmd, newgroup)
+
+                if new_stop_signal != cmd.stop_signal and new_stop_signal != unchanged_val:
+                    self.sheriff.set_command_stop_signal(cmd, new_stop_signal)
+
+                if new_stop_time_allowed != cmd.stop_time_allowed and new_stop_time_allowed != unchanged_val:
+                    self.sheriff.set_command_stop_time_allowed(cmd, new_stop_time_allowed)
+
                 cmd_ind = cmd_ind+1
             break
         dlg.destroy ()

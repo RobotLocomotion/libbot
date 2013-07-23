@@ -1,23 +1,26 @@
 import cStringIO as StringIO
 import traceback
+import signal
 
 import gobject
 import gtk
 
 from bot_procman.sheriff_config import Parser, ScriptNode
 from bot_procman.sheriff_script import SheriffScript
-from bot_procman.sheriff import SheriffCommandSpec
+from bot_procman.sheriff import SheriffCommandSpec, DEFAULT_STOP_SIGNAL, DEFAULT_STOP_TIME_ALLOWED
 
 class AddModifyCommandDialog (gtk.Dialog):
     def __init__ (self, parent, deputies, groups,
             initial_cmd="", initial_cmd_id="", initial_deputy="",
-            initial_group="", initial_auto_respawn=False):
+            initial_group="", initial_auto_respawn=False,
+            initial_stop_signal=DEFAULT_STOP_SIGNAL,
+            initial_stop_time_allowed=DEFAULT_STOP_TIME_ALLOWED):
         # add command dialog
         gtk.Dialog.__init__ (self, "Add/Modify Command", parent,
                 gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
                 (gtk.STOCK_OK, gtk.RESPONSE_ACCEPT,
                  gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT))
-        table = gtk.Table(5, 2)
+        table = gtk.Table(7, 2)
 
         # deputy
         table.attach (gtk.Label ("Deputy"), 0, 1, 0, 1, 0, 0)
@@ -68,13 +71,50 @@ class AddModifyCommandDialog (gtk.Dialog):
                 lambda e: self.response (gtk.RESPONSE_ACCEPT))
 
         # auto respawn
-        table.attach (gtk.Label ("Auto-restart"), 0, 1, 4, 5, 0, 0)
+        auto_restart_tt = "If the command terminates while running, should the deputy automatically restart it?"
+        auto_restart_label = gtk.Label ("Auto-restart")
+        auto_restart_label.set_tooltip_text(auto_restart_tt)
+        table.attach(auto_restart_label, 0, 1, 4, 5, 0, 0)
         self.auto_respawn_cb = gtk.CheckButton ()
         self.auto_respawn_cb.set_active (initial_auto_respawn)
         if (initial_auto_respawn<0):
             self.auto_respawn_cb.set_inconsistent(True);
         self.auto_respawn_cb.connect("toggled", self.auto_respawn_cb_callback)
+        self.auto_respawn_cb.set_tooltip_text(auto_restart_tt)
         table.attach (self.auto_respawn_cb, 1, 2, 4, 5)
+
+        # stop signal
+        stop_signal_tt = "When stopping a signal, what OS signal to initially send to request a clean exit"
+        stop_signal_label = gtk.Label("Stop signal")
+        stop_signal_label.set_tooltip_text(stop_signal_tt)
+        table.attach(stop_signal_label, 0, 1, 5, 6, 0, 0)
+        try:
+            self.stop_signal_c = gtk.ComboBoxText()
+        except AttributeError:
+            self.stop_signal_c = gtk.combo_box_new_text()
+        self.stop_signal_entries = [ \
+                (signal.SIGINT, "SIGINT"),
+                (signal.SIGTERM, "SIGTERM"),
+                (signal.SIGKILL, "SIGKILL") ]
+        for i, entry in enumerate(self.stop_signal_entries):
+            signum, signame = entry
+            self.stop_signal_c.append_text(signame)
+            if signum == initial_stop_signal:
+                self.stop_signal_c.set_active(i)
+        self.stop_signal_c.set_tooltip_text(stop_signal_tt)
+        table.attach(self.stop_signal_c, 1, 2, 5, 6)
+
+        # stop time allowed
+        stop_time_allowed_tt = "When stopping a running command, how long to wait between sending the stop signal and a SIGKILL if the command doesn't stop."
+        stop_time_allowed_label = gtk.Label("Time allowed when stopping")
+        stop_time_allowed_label.set_tooltip_text(stop_time_allowed_tt)
+        table.attach(stop_time_allowed_label, 0, 1, 6, 7, 0, 0)
+        self.stop_time_allowed_sb = gtk.SpinButton()
+        self.stop_time_allowed_sb.set_increments(1, 5)
+        self.stop_time_allowed_sb.set_range(1, 999999)
+        self.stop_time_allowed_sb.set_value(int(initial_stop_time_allowed))
+        self.stop_time_allowed_sb.set_tooltip_text(stop_time_allowed_tt)
+        table.attach(self.stop_time_allowed_sb, 1, 2, 6, 7)
 
         self.vbox.pack_start (table, False, False, 0)
         table.show_all ()
@@ -102,6 +142,12 @@ class AddModifyCommandDialog (gtk.Dialog):
             return -1
         else:
              return self.auto_respawn_cb.get_active()
+
+    def get_stop_signal(self):
+        return self.stop_signal_entries[self.stop_signal_c.get_active()][0]
+
+    def get_stop_time_allowed(self):
+        return self.stop_time_allowed_sb.get_value()
 
 class PreferencesDialog(gtk.Dialog):
     def __init__ (self, sheriff_gtk, parent):
@@ -171,6 +217,8 @@ def do_add_command_dialog(sheriff, cmds_ts, window):
         spec.deputy_name = dlg.get_deputy()
         spec.group_name = dlg.get_group().strip()
         spec.auto_respawn = dlg.get_auto_respawn ()
+        spec.stop_signal = dlg.get_stop_signal()
+        spec.stop_time_allowed = dlg.get_stop_time_allowed()
 
         try:
             sheriff.add_command(spec)

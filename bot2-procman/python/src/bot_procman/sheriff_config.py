@@ -392,28 +392,28 @@ class Parser:
         if not self._eat_token (TokIdentifier):
             return
         attrib_name = self._cur_tok.val
-        if attrib_name not in [ "exec", "host", "nickname", "auto_respawn",
-                "group", "stop_signal", "stop_time_allowed" ]:
+
+        attribs = { "exec" : TokString,
+                "host" : TokString,
+                "auto_respawn" : TokString,
+                "group" : TokString,
+                "stop_signal" : TokInteger,
+                "stop_time_allowed" : TokInteger }
+
+        if attrib_name not in attribs:
             self._fail("Unrecognized attribute %s" % attrib_name)
 
         self._eat_token_or_fail(TokAssign, "Expected '='")
-        attrib_val = self._parse_string_or_fail()
+        if attribs[attrib_name] == TokString:
+            attrib_val = self._parse_string_or_fail()
+        else:
+            self._eat_token_or_fail(TokInteger, "Expected integer literal")
+            attrib_val = int(self._cur_tok.val)
         self._eat_token_or_fail(TokEndStatement, "Expected ';'")
-        if attrib_name == "nickname":
-            if len(cmd.attributes["nickname"]):
-                self._fail("Command already has a nickname %s" % cmd.attributes["nickname"])
-            if "/" in attrib_val:
-                self._fail("'/' character not allowed in command name")
-        elif attrib_name == "stop_signal":
-            try:
-                attrib_val = int(attrib_val)
-            except ValueError:
-                self._fail("Invalid value specified for command attribute 'stop_signal'")
-        elif attrib_name == "stop_time_allowed":
-            try:
-                attrib_val = float(attrib_val)
-            except ValueError:
-                self._fail("Invalid value specified for command attribute 'stop_time_allwoed'")
+        if attrib_name == "stop_signal" and attrib_val < 1:
+            self._fail("Invalid value specified for command attribute 'stop_signal'")
+        elif attrib_name == "stop_time_allowed" and attrib_val < 1:
+            self._fail("Invalid value specified for command attribute 'stop_time_allwoed'")
         cmd.attributes[attrib_name] = attrib_val
 
         return self._parse_command_param_list (cmd)

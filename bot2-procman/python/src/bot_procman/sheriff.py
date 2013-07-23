@@ -22,6 +22,7 @@ from bot_procman.info2_t import info2_t
 from bot_procman.orders2_t import orders2_t
 from bot_procman.sheriff_cmd2_t import sheriff_cmd2_t
 from bot_procman.deputy_cmd2_t import deputy_cmd2_t
+from bot_procman.discovery_t import discovery_t
 import bot_procman.sheriff_config as sheriff_config
 from bot_procman.sheriff_script import SheriffScript
 
@@ -507,6 +508,13 @@ class Sheriff(gobject.GObject):
         self.waiting_for_status = None
         self.last_script_action_time = None
 
+        # publish a discovery message to query for existing deputies
+        discover_msg = discovery_t()
+        discover_msg.utime = _now_utime()
+        discover_msg.host = ""
+        discover_msg.nonce = 0
+        self.comms.publish("PMD_DISCOVER", discover_msg.encode())
+
     def _get_or_make_deputy(self, deputy_name):
         if deputy_name not in self.deputies:
             self.deputies[deputy_name] = SheriffDeputy(deputy_name)
@@ -746,7 +754,6 @@ class Sheriff(gobject.GObject):
         newcmd.exec_str = spec.exec_str
         newcmd.command_id = spec.command_id
         newcmd.group = spec.group_name
-        print("newcmd.group: %s" % newcmd.group)
         newcmd.sheriff_id = self.__get_free_sheriff_id()
         newcmd.auto_respawn = spec.auto_respawn
         newcmd.stop_signal = spec.stop_signal
@@ -868,6 +875,18 @@ class Sheriff(gobject.GObject):
         restarted.
         """
         cmd.auto_respawn = newauto_respawn
+
+    def set_command_stop_signal(self, cmd, new_stop_signal):
+        """Set the OS signal that is sent to a command when requesting it to
+        stop cleanly.  If the command doesn't cleanly exit within the stop time
+        allowed, then it is sent a SIGKILL."""
+        cmd.stop_signal = new_stop_signal
+
+    def set_command_stop_time_allowed(self, cmd, new_stop_time_allowed):
+        """Set how much time (seconds) to wait for a command to exit cleanly when
+        stopping the command, before sending it a SIGKILL.  Integer values only.
+        """
+        cmd.stop_time_allowed = int(new_stop_time_allowed)
 
     def schedule_command_for_removal(self, command):
         """Remove a command.

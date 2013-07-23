@@ -80,7 +80,7 @@ static void dbgt (const char *fmt, ...)
     time (&now);
     struct tm now_tm;
     localtime_r (&now, &now_tm);
-    strftime (timebuf, sizeof (timebuf)-1, "%F %T", &now_tm);
+    strftime (timebuf, sizeof (timebuf)-1, "%FT%T%z", &now_tm);
 
     char buf[4096];
     vsnprintf (buf, sizeof(buf), fmt, ap);
@@ -526,7 +526,7 @@ transmit_proc_info (procman_deputy_t *s)
             iter = iter->next;
         }
 
-        if (s->verbose) printf ("transmitting deputy info!\n");
+        if (s->verbose) dbgt ("transmitting deputy info!\n");
         bot_procman_info_t_publish (s->lcm, "PMD_INFO", &msg);
 
         // release memory
@@ -577,7 +577,7 @@ transmit_proc_info (procman_deputy_t *s)
             iter = iter->next;
         }
 
-        if (s->verbose) printf ("transmitting deputy info!\n");
+        if (s->verbose) dbgt ("transmitting deputy info!\n");
         bot_procman_info2_t_publish (s->lcm, "PMD_INFO2", &msg);
 
         // release memory
@@ -742,6 +742,20 @@ _set_command_group (procman_cmd_t *p, const char *group)
     mi->group = strdup (group);
 }
 
+static void
+_set_command_stop_signal (procman_cmd_t *p, int stop_signal)
+{
+    pmd_cmd_moreinfo_t *mi = p->user;
+    mi->stop_signal = stop_signal;
+}
+
+static void
+_set_command_stop_time_allowed (procman_cmd_t *p, float stop_time_allowed)
+{
+    pmd_cmd_moreinfo_t *mi = p->user;
+    mi->stop_time_allowed = stop_time_allowed;
+}
+
 
 static void
 _set_command_nickname (procman_cmd_t *p, const char *nickname)
@@ -765,7 +779,7 @@ _handle_orders2(procman_deputy_t* s, const bot_procman_orders2_t* orders, int me
     // ignore orders for other deputies
     if (strcmp (orders->host, s->hostname)) {
         if (s->verbose)
-            printf ("ignoring orders for other host %s\n", orders->host);
+            dbgt ("ignoring orders for other host %s\n", orders->host);
         return;
     }
     s->norders_forme_slm++;
@@ -814,13 +828,13 @@ _handle_orders2(procman_deputy_t* s, const bot_procman_orders2_t* orders, int me
     int action_taken = 0;
     int i;
     if (s->verbose)
-        printf ("orders for me received with %d commands\n", orders->ncmds);
+        dbgt ("orders for me received with %d commands\n", orders->ncmds);
     for (i=0; i<orders->ncmds; i++) {
 
         bot_procman_sheriff_cmd2_t *cmd_msg = &orders->cmds[i];
 
         if (s->verbose)
-            printf ("order %d: %s (%d, %d)\n",
+            dbgt ("order %d: %s (%d, %d)\n",
                     i, cmd_msg->cmd.exec_str,
                     cmd_msg->desired_runid, cmd_msg->force_quit);
 
@@ -832,7 +846,7 @@ _handle_orders2(procman_deputy_t* s, const bot_procman_orders2_t* orders, int me
             mi = (pmd_cmd_moreinfo_t*) p->user;
         } else {
             // if not, then create it.
-            if (s->verbose) printf ("adding new process (%s)\n", cmd_msg->cmd.exec_str);
+            if (s->verbose) dbgt ("adding new process (%s)\n", cmd_msg->cmd.exec_str);
             p = procman_add_cmd (s->pm, cmd_msg->cmd.exec_str);
 
             // allocate a private data structure for glib info
@@ -883,6 +897,20 @@ _handle_orders2(procman_deputy_t* s, const bot_procman_orders2_t* orders, int me
                     cmd_msg->cmd.group);
             _set_command_group (p, cmd_msg->cmd.group);
             action_taken = 1;
+        }
+
+        // change the stop signal of a command?
+        if(mi->stop_signal != cmd_msg->cmd.stop_signal) {
+            dbg("setting stop signal of [%s] to [%d]\n", p->cmd->str,
+                    cmd_msg->cmd.stop_signal);
+            _set_command_stop_signal(p, cmd_msg->cmd.stop_signal);
+        }
+
+        // change the stop time allowed of a command?
+        if(mi->stop_time_allowed != cmd_msg->cmd.stop_time_allowed) {
+            dbg("setting stop time allowed of [%s] to [%f]\n", p->cmd->str,
+                    cmd_msg->cmd.stop_time_allowed);
+            _set_command_stop_time_allowed(p, cmd_msg->cmd.stop_time_allowed);
         }
 
         mi->should_be_stopped = cmd_msg->force_quit;
@@ -999,7 +1027,7 @@ procman_deputy_discovery_received(const lcm_recv_buf_t* rbuf, const char* channe
       // received a discovery message while still in discovery mode.  Check to
       // see if it's from a conflicting deputy.
       if(!strcmp(msg->host, pmd->hostname) && msg->nonce != pmd->deputy_pid) {
-        fprintf(stderr, "ERROR.  Detected another deputy named [%s].  Aborting to avoid conflicts.\n",
+        dbgt("ERROR.  Detected another deputy named [%s].  Aborting to avoid conflicts.\n",
             msg->host);
         exit(1);
       }
@@ -1021,12 +1049,12 @@ procman_deputy_info2_received(const lcm_recv_buf_t *rbuf, const char *channel,
       // A different deputy has reported while we're still in discovery mode.
       // Check to see if the deputy names are in conflict.
       if(!strcmp(msg->host, pmd->hostname)) {
-        fprintf(stderr, "ERROR.  Detected another deputy named [%s].  Aborting to avoid conflicts.\n",
+        dbgt("ERROR.  Detected another deputy named [%s].  Aborting to avoid conflicts.\n",
             msg->host);
         exit(2);
       }
     } else {
-      fprintf(stderr, "WARNING:  Still processing info messages while not in discovery mode??\n");
+      dbgt("WARNING:  Still processing info messages while not in discovery mode??\n");
     }
 }
 
@@ -1041,12 +1069,12 @@ procman_deputy_info_received(const lcm_recv_buf_t *rbuf, const char *channel,
       // A different deputy has reported while we're still in discovery mode.
       // Check to see if the deputy names are in conflict.
       if(!strcmp(msg->host, pmd->hostname)) {
-        fprintf(stderr, "ERROR.  Detected another deputy named [%s].  Aborting to avoid conflicts.\n",
+        dbgt("ERROR.  Detected another deputy named [%s].  Aborting to avoid conflicts.\n",
             msg->host);
         exit(2);
       }
     } else {
-      fprintf(stderr, "WARNING:  Still processing info messages while not in discovery mode??\n");
+      dbgt("WARNING:  Still processing info messages while not in discovery mode??\n");
     }
 }
 
