@@ -38,8 +38,12 @@
 
 #include <lcmtypes/bot_procman_printf_t.h>
 #include <lcmtypes/bot_procman_info_t.h>
-#include <lcmtypes/bot_procman_orders_t.h>
 #include <lcmtypes/bot_procman_discovery_t.h>
+#include <lcmtypes/bot_procman_orders_t.h>
+
+#include <lcmtypes/bot_procman_info2_t.h>
+#include <lcmtypes/bot_procman_orders2_t.h>
+
 #include "procman.h"
 #include "procinfo.h"
 #include "signal_pipe.h"
@@ -51,6 +55,9 @@
 #define MAX_RESPAWN_DELAY_MS 1000
 #define RESPAWN_BACKOFF_RATE 2
 #define DISCOVERY_TIME_MS 1500
+
+#define DEFAULT_STOP_SIGNAL 2
+#define DEFAULT_STOP_TIME_ALLOWED 7
 
 #define dbg(args...) fprintf(stderr, args)
 //#undef dbg
@@ -73,7 +80,7 @@ static void dbgt (const char *fmt, ...)
     time (&now);
     struct tm now_tm;
     localtime_r (&now, &now_tm);
-    strftime (timebuf, sizeof (timebuf)-1, "%F %T", &now_tm);
+    strftime (timebuf, sizeof (timebuf)-1, "%FT%T%z", &now_tm);
 
     char buf[4096];
     vsnprintf (buf, sizeof(buf), fmt, ap);
@@ -92,17 +99,20 @@ typedef struct _procman_deputy {
 
     GMainLoop * mainloop;
 
-    int norders_slm;       // total bot_procman_orders_t observed Since Last MARK
-    int norders_forme_slm; // total bot_procman_orders_t for this deputy slm
-    int nstale_orders_slm; // total stale bot_procman_orders_t for this deputy slm
+    int norders_slm;       // total bot_procman_orders2_t observed Since Last MARK
+    int norders_forme_slm; // total bot_procman_orders2_t for this deputy slm
+    int nstale_orders_slm; // total stale bot_procman_orders2_t for this deputy slm
 
     GList *observed_sheriffs_slm; // names of observed sheriffs slm
     char *last_sheriff_name;      // name of the most recently observed sheriff
 
     int64_t deputy_start_time;
     bot_procman_info_t_subscription_t* info_subs;
-    bot_procman_discovery_t_subscription_t* discovery_subs;
     bot_procman_orders_t_subscription_t* orders_subs;
+    bot_procman_discovery_t_subscription_t* discovery_subs;
+
+    bot_procman_info2_t_subscription_t* info2_subs;
+    bot_procman_orders2_t_subscription_t* orders2_subs;
 
     pid_t deputy_pid;
     sys_cpu_mem_t cpu_time[2];
@@ -110,6 +120,8 @@ typedef struct _procman_deputy {
 
     int verbose;
     int exiting;
+
+    int messaging_version;
 } procman_deputy_t;
 
 typedef struct _pmd_cmd_moreinfo {
@@ -130,6 +142,9 @@ typedef struct _pmd_cmd_moreinfo {
     guint respawn_timeout_id;
     int64_t last_start_time;
     int respawn_backoff;
+
+    int stop_signal;
+    float stop_time_allowed;
 
     int num_kills_sent;
     int64_t first_kill_time;
@@ -317,12 +332,13 @@ stop_cmd (procman_deputy_t *pmd, procman_cmd_t *cmd)
         g_source_remove(mi->respawn_timeout_id);
 
     int64_t now = timestamp_now();
+    int64_t sigkill_time = mi->first_kill_time + (int64_t)(mi->stop_time_allowed * 1000000);
     int status;
     if(!mi->first_kill_time) {
-        status = procman_kill_cmd (pmd->pm, cmd, SIGINT);
+        status = procman_kill_cmd (pmd->pm, cmd, mi->stop_signal);
         mi->first_kill_time = now;
         mi->num_kills_sent++;
-    } else if(now > mi->first_kill_time + 7000000) {
+    } else if(now > sigkill_time) {
         status = procman_kill_cmd (pmd->pm, cmd, SIGKILL);
     } else {
         return 0;
@@ -470,51 +486,103 @@ glib_handle_signal (int signal, procman_deputy_t *pmd) {
 static void
 transmit_proc_info (procman_deputy_t *s)
 {
-    int i;
-    bot_procman_info_t msg;
+    if(s->messaging_version == 1) {
+        int i;
+        bot_procman_info_t msg;
 
-    // build a deputy info message
-    memset (&msg, 0, sizeof (msg));
+        // build a deputy info message
+        memset(&msg, 0, sizeof (msg));
+        const GList *allcmds = procman_get_cmds(s->pm);
 
-    const GList *allcmds = procman_get_cmds (s->pm);
+        msg.utime = timestamp_now ();
+        msg.host = s->hostname;
+        msg.cpu_load = s->cpu_load;
+        msg.phys_mem_total_bytes = s->cpu_time[1].memtotal;
+        msg.phys_mem_free_bytes = s->cpu_time[1].memfree;
+        msg.swap_total_bytes = s->cpu_time[1].swaptotal;
+        msg.swap_free_bytes = s->cpu_time[1].swapfree;
 
-    msg.utime = timestamp_now ();
-    msg.host = s->hostname;
-    msg.cpu_load = s->cpu_load;
-    msg.phys_mem_total_bytes = s->cpu_time[1].memtotal;
-    msg.phys_mem_free_bytes = s->cpu_time[1].memfree;
-    msg.swap_total_bytes = s->cpu_time[1].swaptotal;
-    msg.swap_free_bytes = s->cpu_time[1].swapfree;
+        msg.ncmds = g_list_length((GList*) allcmds);
+        msg.cmds =
+            (bot_procman_deputy_cmd_t *) calloc(msg.ncmds, sizeof(bot_procman_deputy_cmd_t));
 
-    msg.ncmds = g_list_length ((GList*) allcmds);
-    msg.cmds =
-        (bot_procman_deputy_cmd_t *) calloc (msg.ncmds, sizeof (bot_procman_deputy_cmd_t));
+        const GList *iter = allcmds;
+        for (i=0; i<msg.ncmds; i++) {
+            procman_cmd_t *cmd = (procman_cmd_t*)iter->data;
+            pmd_cmd_moreinfo_t *mi = (pmd_cmd_moreinfo_t*)cmd->user;
 
-    const GList *iter = allcmds;
-    for (i=0; i<msg.ncmds; i++) {
-        procman_cmd_t *cmd = (procman_cmd_t*)iter->data;
-        pmd_cmd_moreinfo_t *mi = (pmd_cmd_moreinfo_t*)cmd->user;
+            msg.cmds[i].name = cmd->cmd->str;
+            msg.cmds[i].nickname = mi->nickname;
+            msg.cmds[i].group = mi->group;
+            msg.cmds[i].auto_respawn = mi->auto_respawn;
+            msg.cmds[i].actual_runid = mi->actual_runid;
+            msg.cmds[i].pid = cmd->pid;
+            msg.cmds[i].exit_code = cmd->exit_status;
+            msg.cmds[i].sheriff_id = mi->sheriff_id;
+            msg.cmds[i].cpu_usage = mi->cpu_usage;
+            msg.cmds[i].mem_vsize_bytes = mi->cpu_time[1].vsize;
+            msg.cmds[i].mem_rss_bytes = mi->cpu_time[1].rss;
 
-        msg.cmds[i].name = cmd->cmd->str;
-        msg.cmds[i].nickname = mi->nickname;
-        msg.cmds[i].actual_runid = mi->actual_runid;
-        msg.cmds[i].pid = cmd->pid;
-        msg.cmds[i].exit_code = cmd->exit_status;
-        msg.cmds[i].sheriff_id = mi->sheriff_id;
-        msg.cmds[i].group = mi->group;
-        msg.cmds[i].cpu_usage = mi->cpu_usage;
-        msg.cmds[i].mem_vsize_bytes = mi->cpu_time[1].vsize;
-        msg.cmds[i].mem_rss_bytes = mi->cpu_time[1].rss;
-        msg.cmds[i].auto_respawn = mi->auto_respawn;
+            iter = iter->next;
+        }
 
-        iter = iter->next;
+        if (s->verbose) dbgt ("transmitting deputy info!\n");
+        bot_procman_info_t_publish (s->lcm, "PMD_INFO", &msg);
+
+        // release memory
+        free (msg.cmds);
+    } else {
+        int i;
+        bot_procman_info2_t msg;
+
+        // build a deputy info message
+        memset (&msg, 0, sizeof (msg));
+
+        const GList *allcmds = procman_get_cmds (s->pm);
+
+        msg.utime = timestamp_now ();
+        msg.host = s->hostname;
+        msg.cpu_load = s->cpu_load;
+        msg.phys_mem_total_bytes = s->cpu_time[1].memtotal;
+        msg.phys_mem_free_bytes = s->cpu_time[1].memfree;
+        msg.swap_total_bytes = s->cpu_time[1].swaptotal;
+        msg.swap_free_bytes = s->cpu_time[1].swapfree;
+
+        msg.ncmds = g_list_length((GList*) allcmds);
+        msg.cmds =
+            (bot_procman_deputy_cmd2_t *) calloc(msg.ncmds, sizeof(bot_procman_deputy_cmd2_t));
+
+        const GList *iter = allcmds;
+        for (i=0; i<msg.ncmds; i++) {
+            procman_cmd_t *cmd = (procman_cmd_t*)iter->data;
+            pmd_cmd_moreinfo_t *mi = (pmd_cmd_moreinfo_t*)cmd->user;
+
+            msg.cmds[i].cmd.exec_str = cmd->cmd->str;
+            msg.cmds[i].cmd.command_name = mi->nickname;
+            msg.cmds[i].cmd.group = mi->group;
+            msg.cmds[i].cmd.auto_respawn = mi->auto_respawn;
+            msg.cmds[i].cmd.stop_signal = mi->stop_signal;
+            msg.cmds[i].cmd.stop_time_allowed = mi->stop_time_allowed;
+            msg.cmds[i].cmd.num_options = 0;
+            msg.cmds[i].cmd.option_names = NULL;
+            msg.cmds[i].cmd.option_values = NULL;
+            msg.cmds[i].actual_runid = mi->actual_runid;
+            msg.cmds[i].pid = cmd->pid;
+            msg.cmds[i].exit_code = cmd->exit_status;
+            msg.cmds[i].sheriff_id = mi->sheriff_id;
+            msg.cmds[i].cpu_usage = mi->cpu_usage;
+            msg.cmds[i].mem_vsize_bytes = mi->cpu_time[1].vsize;
+            msg.cmds[i].mem_rss_bytes = mi->cpu_time[1].rss;
+
+            iter = iter->next;
+        }
+
+        if (s->verbose) dbgt ("transmitting deputy info!\n");
+        bot_procman_info2_t_publish (s->lcm, "PMD_INFO2", &msg);
+
+        // release memory
+        free (msg.cmds);
     }
-
-    if (s->verbose) printf ("transmitting deputy info!\n");
-    bot_procman_info_t_publish (s->lcm, "PMD_INFO", &msg);
-
-    // release memory
-    free (msg.cmds);
 }
 
 static void
@@ -641,8 +709,8 @@ introspection_timeout (procman_deputy_t *s)
     return TRUE;
 }
 
-static bot_procman_sheriff_cmd_t *
-procmd_orders_find_cmd (const bot_procman_orders_t *a, int32_t sheriff_id)
+static bot_procman_sheriff_cmd2_t *
+procmd_orders_find_cmd (const bot_procman_orders2_t *a, int32_t sheriff_id)
 {
     int i;
     for (i=0; i<a->ncmds; i++) {
@@ -674,6 +742,20 @@ _set_command_group (procman_cmd_t *p, const char *group)
     mi->group = strdup (group);
 }
 
+static void
+_set_command_stop_signal (procman_cmd_t *p, int stop_signal)
+{
+    pmd_cmd_moreinfo_t *mi = p->user;
+    mi->stop_signal = stop_signal;
+}
+
+static void
+_set_command_stop_time_allowed (procman_cmd_t *p, float stop_time_allowed)
+{
+    pmd_cmd_moreinfo_t *mi = p->user;
+    mi->stop_time_allowed = stop_time_allowed;
+}
+
 
 static void
 _set_command_nickname (procman_cmd_t *p, const char *nickname)
@@ -684,10 +766,8 @@ _set_command_nickname (procman_cmd_t *p, const char *nickname)
 }
 
 static void
-procman_deputy_order_received (const lcm_recv_buf_t *rbuf, const char *channel,
-        const bot_procman_orders_t *orders, void *user_data)
+_handle_orders2(procman_deputy_t* s, const bot_procman_orders2_t* orders, int messaging_version)
 {
-    procman_deputy_t *s = user_data;
     const GList *iter = NULL;
     s->norders_slm ++;
 
@@ -699,7 +779,7 @@ procman_deputy_order_received (const lcm_recv_buf_t *rbuf, const char *channel,
     // ignore orders for other deputies
     if (strcmp (orders->host, s->hostname)) {
         if (s->verbose)
-            printf ("ignoring orders for other host %s\n", orders->host);
+            dbgt ("ignoring orders for other host %s\n", orders->host);
         return;
     }
     s->norders_forme_slm++;
@@ -708,13 +788,16 @@ procman_deputy_order_received (const lcm_recv_buf_t *rbuf, const char *channel,
     int64_t now = timestamp_now ();
     if (now - orders->utime > PROCMAN_MAX_MESSAGE_AGE_USEC) {
         for (int i=0; i<orders->ncmds; i++) {
-               bot_procman_sheriff_cmd_t *cmd = &orders->cmds[i];
-               printf_and_transmit (s, cmd->sheriff_id, "ignoring stale orders (utime %d seconds ago). You may want to check the system clocks!\n",
+               bot_procman_sheriff_cmd2_t *cmd_msg = &orders->cmds[i];
+               printf_and_transmit (s, cmd_msg->sheriff_id,
+                   "ignoring stale orders (utime %d seconds ago). You may want to check the system clocks!\n",
                    (int) ((now - orders->utime) / 1000000));
         }
          s->nstale_orders_slm++;
         return;
     }
+
+    s->messaging_version = messaging_version;
 
     // check if we've seen this sheriff since the last MARK.
     GList *ositer = NULL;
@@ -737,41 +820,44 @@ procman_deputy_order_received (const lcm_recv_buf_t *rbuf, const char *channel,
 
     // update variables
     procman_remove_all_variables(s->pm);
-    for(int varind=0; varind<orders->nvars; varind++) {
-        procman_set_variable(s->pm, orders->varnames[varind], orders->varvals[varind]);
-    }
+//    for(int varind=0; varind<orders->nvars; varind++) {
+//        procman_set_variable(s->pm, orders->varnames[varind], orders->varvals[varind]);
+//    }
 
     // attempt to carry out the orders
     int action_taken = 0;
     int i;
     if (s->verbose)
-        printf ("orders for me received with %d commands\n", orders->ncmds);
+        dbgt ("orders for me received with %d commands\n", orders->ncmds);
     for (i=0; i<orders->ncmds; i++) {
 
-        bot_procman_sheriff_cmd_t *cmd = &orders->cmds[i];
+        bot_procman_sheriff_cmd2_t *cmd_msg = &orders->cmds[i];
 
         if (s->verbose)
-            printf ("order %d: %s (%d, %d)\n",
-                    i, cmd->name, cmd->desired_runid, cmd->force_quit);
+            dbgt ("order %d: %s (%d, %d)\n",
+                    i, cmd_msg->cmd.exec_str,
+                    cmd_msg->desired_runid, cmd_msg->force_quit);
 
         // do we already have this command somewhere?
-        procman_cmd_t *p = find_local_cmd (s, cmd->sheriff_id);
+        procman_cmd_t *p = find_local_cmd (s, cmd_msg->sheriff_id);
         pmd_cmd_moreinfo_t *mi = NULL;
 
         if (p) {
             mi = (pmd_cmd_moreinfo_t*) p->user;
         } else {
             // if not, then create it.
-            if (s->verbose) printf ("adding new process (%s)\n", cmd->name);
-            p = procman_add_cmd (s->pm, cmd->name);
+            if (s->verbose) dbgt ("adding new process (%s)\n", cmd_msg->cmd.exec_str);
+            p = procman_add_cmd (s->pm, cmd_msg->cmd.exec_str);
 
             // allocate a private data structure for glib info
             mi = (pmd_cmd_moreinfo_t*) calloc (1, sizeof (pmd_cmd_moreinfo_t));
             mi->deputy = s;
-            mi->sheriff_id = cmd->sheriff_id;
-            mi->group = strdup (cmd->group);
-            mi->nickname = strdup (cmd->nickname);
-            mi->auto_respawn = cmd->auto_respawn;
+            mi->sheriff_id = cmd_msg->sheriff_id;
+            mi->group = strdup (cmd_msg->cmd.group);
+            mi->nickname = strdup (cmd_msg->cmd.command_name);
+            mi->auto_respawn = cmd_msg->cmd.auto_respawn;
+            mi->stop_signal = cmd_msg->cmd.stop_signal;
+            mi->stop_time_allowed = cmd_msg->cmd.stop_time_allowed;
             mi->last_start_time = 0;
             mi->respawn_backoff = MIN_RESPAWN_DELAY_MS;
             mi->respawn_timeout_id = 0;
@@ -784,48 +870,62 @@ procman_deputy_order_received (const lcm_recv_buf_t *rbuf, const char *channel,
 
         // rename a command?  does not kill a running command, so effect does
         // not apply until command is restarted.
-        if (strcmp (p->cmd->str, cmd->name)) {
-            dbgt ("renaming [%s] to [%s]\n", p->cmd->str, cmd->name);
-            procman_cmd_change_str (p, cmd->name);
+        if (strcmp (p->cmd->str, cmd_msg->cmd.exec_str)) {
+            dbgt ("Changnig executable [%s] to [%s]\n", p->cmd->str, cmd_msg->cmd.exec_str);
+            procman_cmd_change_str (p, cmd_msg->cmd.exec_str);
 
             action_taken = 1;
         }
 
         // change a command's nickname?
-        if (strcmp (mi->nickname, cmd->nickname)) {
-            dbgt ("setting nickname of [%s] to [%s]\n", p->cmd->str,
-                    cmd->nickname);
-            _set_command_nickname (p, cmd->nickname);
+        if (strcmp (mi->nickname, cmd_msg->cmd.command_name)) {
+            dbgt ("setting name of [%s] to [%s]\n", p->cmd->str,
+                    cmd_msg->cmd.command_name);
+            _set_command_nickname (p, cmd_msg->cmd.command_name);
             action_taken = 1;
         }
 
         // has auto-respawn changed?
-        if (cmd->auto_respawn != mi->auto_respawn) {
-            dbgt ("setting auto-respawn of [%s] to %d\n", p->cmd->str, cmd->auto_respawn);
-            mi->auto_respawn = cmd->auto_respawn;
+        if (cmd_msg->cmd.auto_respawn != mi->auto_respawn) {
+            dbgt ("setting auto-respawn of [%s] to %d\n", p->cmd->str, cmd_msg->cmd.auto_respawn);
+            mi->auto_respawn = cmd_msg->cmd.auto_respawn;
         }
 
         // change the group of a command?
-        if (strcmp (mi->group, cmd->group)) {
+        if (strcmp (mi->group, cmd_msg->cmd.group)) {
             dbgt ("setting group of [%s] to [%s]\n", p->cmd->str,
-                    cmd->group);
-            _set_command_group (p, cmd->group);
+                    cmd_msg->cmd.group);
+            _set_command_group (p, cmd_msg->cmd.group);
             action_taken = 1;
         }
 
-        mi->should_be_stopped = cmd->force_quit;
+        // change the stop signal of a command?
+        if(mi->stop_signal != cmd_msg->cmd.stop_signal) {
+            dbg("setting stop signal of [%s] to [%d]\n", p->cmd->str,
+                    cmd_msg->cmd.stop_signal);
+            _set_command_stop_signal(p, cmd_msg->cmd.stop_signal);
+        }
+
+        // change the stop time allowed of a command?
+        if(mi->stop_time_allowed != cmd_msg->cmd.stop_time_allowed) {
+            dbg("setting stop time allowed of [%s] to [%f]\n", p->cmd->str,
+                    cmd_msg->cmd.stop_time_allowed);
+            _set_command_stop_time_allowed(p, cmd_msg->cmd.stop_time_allowed);
+        }
+
+        mi->should_be_stopped = cmd_msg->force_quit;
 
         if (PROCMAN_CMD_STOPPED == cmd_status &&
-            (mi->actual_runid != cmd->desired_runid) &&
+            (mi->actual_runid != cmd_msg->desired_runid) &&
             ! mi->should_be_stopped) {
-            start_cmd (s, p, cmd->desired_runid);
+            start_cmd (s, p, cmd_msg->desired_runid);
             action_taken = 1;
         } else if (PROCMAN_CMD_RUNNING == cmd_status &&
-                (mi->should_be_stopped || (cmd->desired_runid != mi->actual_runid))) {
+                (mi->should_be_stopped || (cmd_msg->desired_runid != mi->actual_runid))) {
             stop_cmd(s, p);
             action_taken = 1;
         } else {
-            mi->actual_runid = cmd->desired_runid;
+            mi->actual_runid = cmd_msg->desired_runid;
         }
     }
 
@@ -835,10 +935,10 @@ procman_deputy_order_received (const lcm_recv_buf_t *rbuf, const char *channel,
     for (iter=procman_get_cmds (s->pm); iter; iter=iter->next) {
         procman_cmd_t *p = (procman_cmd_t*)iter->data;
         pmd_cmd_moreinfo_t *mi = (pmd_cmd_moreinfo_t*)p->user;
-        bot_procman_sheriff_cmd_t *cmd =
+        bot_procman_sheriff_cmd2_t *cmd_msg =
             procmd_orders_find_cmd (orders, mi->sheriff_id);
 
-        if (! cmd) {
+        if (! cmd_msg) {
             // push the orphaned command into a list first.  remove later, to
             // avoid corrupting the linked list (since this is a borrowed data
             // structure)
@@ -871,7 +971,49 @@ procman_deputy_order_received (const lcm_recv_buf_t *rbuf, const char *channel,
 
     if (action_taken)
         transmit_proc_info (s);
-    return;
+}
+
+static void
+procman_deputy_order2_received (const lcm_recv_buf_t *rbuf, const char *channel,
+        const bot_procman_orders2_t *orders, void *user_data)
+{
+    procman_deputy_t *deputy = user_data;
+    _handle_orders2(deputy, orders, 2);
+}
+
+static void
+procman_deputy_order_received (const lcm_recv_buf_t *rbuf, const char *channel,
+        const bot_procman_orders_t *orders, void *user_data)
+{
+    procman_deputy_t *deputy = user_data;
+    bot_procman_orders2_t new_orders;
+    new_orders.utime = orders->utime;
+    new_orders.host = orders->host;
+    new_orders.sheriff_name = orders->sheriff_name;
+    new_orders.num_options = 0;
+    new_orders.option_names = NULL;
+    new_orders.option_values = NULL;
+    new_orders.ncmds = orders->ncmds;
+    new_orders.cmds = (bot_procman_sheriff_cmd2_t*)calloc(orders->ncmds, sizeof(bot_procman_sheriff_cmd2_t));
+    int cmd_index;
+    for(cmd_index=0; cmd_index<new_orders.ncmds; cmd_index++) {
+        bot_procman_sheriff_cmd_t* cmd = &orders->cmds[cmd_index];
+        bot_procman_sheriff_cmd2_t* new_cmd = &new_orders.cmds[cmd_index];
+        new_cmd->cmd.exec_str = cmd->name;
+        new_cmd->cmd.command_name = cmd->nickname;
+        new_cmd->cmd.group = cmd->group;
+        new_cmd->cmd.auto_respawn = cmd->auto_respawn;
+        new_cmd->cmd.stop_signal = DEFAULT_STOP_SIGNAL;
+        new_cmd->cmd.stop_time_allowed = DEFAULT_STOP_TIME_ALLOWED;
+        new_cmd->cmd.num_options = 0;
+        new_cmd->cmd.option_names = NULL;
+        new_cmd->cmd.option_values = NULL;
+        new_cmd->desired_runid = cmd->desired_runid;
+        new_cmd->force_quit = cmd->force_quit;
+        new_cmd->sheriff_id = cmd->sheriff_id;
+    }
+    _handle_orders2(deputy, &new_orders, 1);
+    free(new_orders.cmds);
 }
 
 static void
@@ -885,7 +1027,7 @@ procman_deputy_discovery_received(const lcm_recv_buf_t* rbuf, const char* channe
       // received a discovery message while still in discovery mode.  Check to
       // see if it's from a conflicting deputy.
       if(!strcmp(msg->host, pmd->hostname) && msg->nonce != pmd->deputy_pid) {
-        fprintf(stderr, "ERROR.  Detected another deputy named [%s].  Aborting to avoid conflicts.\n",
+        dbgt("ERROR.  Detected another deputy named [%s].  Aborting to avoid conflicts.\n",
             msg->host);
         exit(1);
       }
@@ -893,6 +1035,26 @@ procman_deputy_discovery_received(const lcm_recv_buf_t* rbuf, const char* channe
       // received a discovery message while not in discovery mode.  Respond by
       // transmitting deputy info.
       transmit_proc_info(pmd);
+    }
+}
+
+static void
+procman_deputy_info2_received(const lcm_recv_buf_t *rbuf, const char *channel,
+        const bot_procman_info2_t *msg, void *user_data)
+{
+    procman_deputy_t *pmd = user_data;
+
+    int64_t now = timestamp_now();
+    if(now < pmd->deputy_start_time + DISCOVERY_TIME_MS * 1000) {
+      // A different deputy has reported while we're still in discovery mode.
+      // Check to see if the deputy names are in conflict.
+      if(!strcmp(msg->host, pmd->hostname)) {
+        dbgt("ERROR.  Detected another deputy named [%s].  Aborting to avoid conflicts.\n",
+            msg->host);
+        exit(2);
+      }
+    } else {
+      dbgt("WARNING:  Still processing info messages while not in discovery mode??\n");
     }
 }
 
@@ -907,12 +1069,12 @@ procman_deputy_info_received(const lcm_recv_buf_t *rbuf, const char *channel,
       // A different deputy has reported while we're still in discovery mode.
       // Check to see if the deputy names are in conflict.
       if(!strcmp(msg->host, pmd->hostname)) {
-        fprintf(stderr, "ERROR.  Detected another deputy named [%s].  Aborting to avoid conflicts.\n",
+        dbgt("ERROR.  Detected another deputy named [%s].  Aborting to avoid conflicts.\n",
             msg->host);
         exit(2);
       }
     } else {
-      fprintf(stderr, "WARNING:  Still processing info messages while not in discovery mode??\n");
+      dbgt("WARNING:  Still processing info messages while not in discovery mode??\n");
     }
 }
 
@@ -934,7 +1096,9 @@ discovery_timeout(procman_deputy_t* pmd)
 
         // Adjust subscriptions
         bot_procman_info_t_unsubscribe(pmd->lcm, pmd->info_subs);
+        bot_procman_info2_t_unsubscribe(pmd->lcm, pmd->info2_subs);
         pmd->info_subs = NULL;
+        pmd->info2_subs = NULL;
 
         bot_procman_discovery_t_unsubscribe(pmd->lcm, pmd->discovery_subs);
         pmd->discovery_subs = NULL;
@@ -944,6 +1108,8 @@ discovery_timeout(procman_deputy_t* pmd)
 
         pmd->orders_subs = bot_procman_orders_t_subscribe (pmd->lcm,
                 "PMD_ORDERS", procman_deputy_order_received, pmd);
+        pmd->orders2_subs = bot_procman_orders2_t_subscribe (pmd->lcm,
+                "PMD_ORDERS2", procman_deputy_order2_received, pmd);
 
         // setup a timer to periodically transmit status information
         g_timeout_add(1000, (GSourceFunc) one_second_timeout, pmd);
@@ -1058,6 +1224,7 @@ int main (int argc, char **argv)
      pmd->exiting = 0;
      pmd->deputy_start_time = timestamp_now();
      pmd->deputy_pid = getpid();
+     pmd->messaging_version = 2;
 
      pmd->mainloop = g_main_loop_new (NULL, FALSE);
      if (!pmd->mainloop) {
@@ -1100,6 +1267,9 @@ int main (int argc, char **argv)
      pmd->info_subs =
          bot_procman_info_t_subscribe(pmd->lcm, "PMD_INFO",
                  procman_deputy_info_received, pmd);
+     pmd->info2_subs =
+         bot_procman_info2_t_subscribe(pmd->lcm, "PMD_INFO2",
+                 procman_deputy_info2_received, pmd);
 
      pmd->discovery_subs =
          bot_procman_discovery_t_subscribe(pmd->lcm, "PMD_DISCOVER",
@@ -1127,6 +1297,10 @@ int main (int argc, char **argv)
      // unsubscribe
      if(pmd->orders_subs)
          bot_procman_orders_t_unsubscribe(pmd->lcm, pmd->orders_subs);
+     if(pmd->orders2_subs)
+         bot_procman_orders2_t_unsubscribe(pmd->lcm, pmd->orders2_subs);
+     if(pmd->info2_subs)
+         bot_procman_info2_t_unsubscribe(pmd->lcm, pmd->info2_subs);
      if(pmd->info_subs)
          bot_procman_info_t_unsubscribe(pmd->lcm, pmd->info_subs);
      if(pmd->discovery_subs)

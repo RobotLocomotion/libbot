@@ -30,10 +30,6 @@
 #include "procman.h"
 #include "procinfo.h"
 
-#define dbg (args...) fprintf(stderr, args)
-//#undef dbg
-//#define dbg (args...)
-
 static void dbgt (const char *fmt, ...)
 {
     va_list ap;
@@ -44,7 +40,7 @@ static void dbgt (const char *fmt, ...)
     time (&now);
     struct tm now_tm;
     localtime_r (&now, &now_tm);
-    strftime (timebuf, sizeof (timebuf)-1, "%F %T", &now_tm);
+    strftime (timebuf, sizeof (timebuf)-1, "%FT%T%z", &now_tm);
 
     char buf[4096];
     vsnprintf (buf, sizeof(buf), fmt, ap);
@@ -170,7 +166,7 @@ int procman_start_cmd (procman_t *pm, procman_cmd_t *p)
             snprintf (ebuf, sizeof(ebuf),
                     "PROCMAN ERROR!!!! couldn't start [%s]!\n"
                     "execv: %s\n", p->cmd->str, strerror (errno));
-            fprintf (stderr, "%s\n", ebuf);
+            dbgt("%s\n", ebuf);
 
             // if execv returns, the command did not execute successfully
             // (e.g. permission denied or bad path or something)
@@ -178,7 +174,7 @@ int procman_start_cmd (procman_t *pm, procman_cmd_t *p)
             // restore stderr so we can barf a real error message
             close(STDERR_FILENO);
             dup2(stderr_backup, STDERR_FILENO);
-            fprintf(stderr, "%s\n", ebuf);
+            dbgt("%s\n", ebuf);
             close(stderr_backup);
 
             exit(-1);
