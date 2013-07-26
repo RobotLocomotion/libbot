@@ -273,7 +273,22 @@ _link_get_trans_interp(const BotCTransLink *link, int64_t utime,
             break;
         i++;
     }
-    if (1 == link->trans_history->len) {
+    if (i == link->trans_history->len)
+        t2 = NULL;
+
+    if(!t2) {
+        memcpy(result, &t1->trans, sizeof(BotTrans));
+    } else {
+        assert(t1->utime < t2->utime);
+        double weight_2 = 
+            (double)((utime - t1->utime)) / (t2->utime - t1->utime);
+        bot_trans_interpolate(result, &t1->trans, &t2->trans, weight_2);
+    }
+
+    // Added by Matt Antone and Maurice to extrapolate utimes in the future
+    // Can result in erroneous estimates when weight_2 is too large, which may happen if
+    // delta for the future utime is much larger than the delta for the last two utimes
+    /*if (1 == link->trans_history->len) {
         memcpy(result, &t1->trans, sizeof(BotTrans));
     } else {
         if (i == 0) {
@@ -284,7 +299,7 @@ _link_get_trans_interp(const BotCTransLink *link, int64_t utime,
         double weight_2 = 
             (double)((utime - t1->utime)) / (t2->utime - t1->utime);
         bot_trans_interpolate(result, &t1->trans, &t2->trans, weight_2);
-    }
+        }*/
     return TRUE;
 }
 
