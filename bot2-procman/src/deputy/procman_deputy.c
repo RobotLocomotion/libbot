@@ -450,19 +450,26 @@ glib_handle_signal (int signal, procman_deputy_t *pmd) {
         dbgt ("received signal %d (%s).  stopping all processes\n", signal,
                 strsignal (signal));
 
+        float max_stop_time_allowed = 1;
+
         // first, send everything a SIGINT to give them a chance to exit
         // cleanly.
         const GList *all_cmds = procman_get_cmds (pmd->pm);
         for (const GList *iter=all_cmds; iter; iter=iter->next) {
             procman_cmd_t *cmd = (procman_cmd_t*)iter->data;
             if (cmd->pid) {
-                procman_kill_cmd (pmd->pm, cmd, SIGINT);
+              pmd_cmd_moreinfo_t *mi = (pmd_cmd_moreinfo_t*)cmd->user;
+                procman_kill_cmd (pmd->pm, cmd, mi->stop_signal);
+                if(mi->stop_time_allowed > max_stop_time_allowed)
+                    max_stop_time_allowed = mi->stop_time_allowed;
             }
         }
         pmd->exiting = 1;
+
         // set a timer, after which everything will be more forcefully
         // terminated.
-        g_timeout_add(10000, (GSourceFunc)on_quit_timeout, pmd);
+        g_timeout_add((int)(max_stop_time_allowed * 1000),
+                (GSourceFunc)on_quit_timeout, pmd);
     }
 
     if(pmd->exiting) {
