@@ -30,6 +30,9 @@ typedef struct _procman_cmd {
     int32_t cmd_id;   // unique to the containing instance of procman_t
 
     GString *cmd; // the command to execute.  Do not modify directly
+
+    char* cmd_name;  // a user-assigned name for the command.  Do not modify directly
+
     int pid;      // pid of process when running.  0 otherwise
 
     int stdin_fd;  // when the process is running, writing to this pipe
@@ -95,7 +98,7 @@ int procman_stop_all_cmds (procman_t *pm);
  * The command is not started.  To start a command running, use
  * procman_start_cmd
  */
-procman_cmd_t* procman_add_cmd (procman_t *pm, const char *cmd_str);
+procman_cmd_t* procman_add_cmd (procman_t *pm, const char *cmd_str, const char* cmd_name);
 
 /* Removes a command from management by procman.  The command must already be
  * stopped and reaped by procman_check_for_dead_children.  Otherwise, this
@@ -142,6 +145,10 @@ int32_t procman_get_cmd_status (procman_t *pm, procman_cmd_t *cmd);
  */
 void procman_cmd_change_str (procman_cmd_t *cmd, const char *cmd_str);
 
+/**
+ * Sets the command name.
+ */
+void procman_cmd_set_name(procman_cmd_t* cmd, const char* cmd_name);
 
 #define PROCMAN_MAX_MESSAGE_AGE_USEC 60000000LL
 
