@@ -700,9 +700,9 @@ introspection_timeout (procman_deputy_t *s)
             g_list_length ((GList*)procman_get_cmds (s->pm)),
             nrunning
            );
-    dbgt ("       orders: %d forme: %d (%d stale) sheriffs: %d\n",
-            s->norders_slm, s->norders_forme_slm, s->nstale_orders_slm,
-            g_list_length (s->observed_sheriffs_slm));
+//    dbgt ("       orders: %d forme: %d (%d stale) sheriffs: %d\n",
+//            s->norders_slm, s->norders_forme_slm, s->nstale_orders_slm,
+//            g_list_length (s->observed_sheriffs_slm));
 
     s->norders_slm = 0;
     s->norders_forme_slm = 0;
