@@ -109,6 +109,10 @@ typedef struct {
   void * user;
 } update_handler_t;
 
+
+static BotParamElement *
+find_key(BotParamElement * el, const char * key, int inherit);
+
 /* Prints an error message, preceeded by useful context information from the
  * parser (i.e. line number). */
 static int print_msg(Parser * p, char * format, ...)
@@ -520,7 +524,11 @@ static int parse_container(Parser * p, BotParamElement * cont, BotParamToken end
   while (get_token(p, &tok, str, sizeof(str)) == 0) {
     //printf ("t %d: %s\n", tok, str);
     if (!child && tok == TokIdentifier) {
-      child = new_element(str);
+      BotParamElement* existing_el = find_key(cont, str, 1);
+      if (NULL == existing_el)
+        child = new_element(str);
+      else
+        child = existing_el;
     }
     else if (child && tok == TokAssign) {
       child->type = BotParamArray;
