@@ -793,7 +793,7 @@ BotParam * bot_param_new_from_named_server (lcm_t * lcm, const char * server_nam
   //TODO: is there a way to be sure nothing else is subscribed???
   int64_t utime_start = _timestamp_now();
   int64_t last_print_utime = -1;
-  while ((_timestamp_now() - utime_start) < 1.5e6) {
+  while ((_timestamp_now() - utime_start) < 3e6) {
     bot_param_request_t req;
     req.utime = _timestamp_now();
     bot_param_request_t_publish(lcm, request_channel, &req);
