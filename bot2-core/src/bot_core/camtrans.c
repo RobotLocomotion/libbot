@@ -179,6 +179,104 @@ bot_angular_lookup_distortion_create (const int num_dist,
     return dist;
 }
 
+
+typedef struct {
+    int num_coeffs;
+    double *coeffs;
+} AngularPolyDistortionParams;
+
+static void
+angular_poly_distortion_destroy (void *dist)
+{
+    AngularPolyDistortionParams* params = (AngularPolyDistortionParams*)dist;
+    free(params->coeffs);
+    free(params);
+}
+
+static double
+angular_poly_evaluate(const AngularPolyDistortionParams *dist, const double in)
+{
+    double in2 = in*in;
+    double out = in;
+    double accum = in;
+    for (int k = 0; k < dist->num_coeffs; ++k) {
+        accum *= in2;
+        out += accum * dist->coeffs[k];
+    }
+    return out;
+}
+
+static int
+angular_poly_distort_func(const void *data, const double ray[3],
+                          double *x, double *y)
+{
+    AngularPolyDistortionParams *dist = (AngularPolyDistortionParams*)data;
+    double phi_u = acos(ray[2]/sqrt(ray[0]*ray[0] + ray[1]*ray[1] + ray[2]*ray[2]));
+    double phi_d = phi_u;
+    for (int iter = 0; iter < 10; ++iter) {
+        double f = angular_poly_evaluate(dist, phi_d) - phi_u;
+        if (f < 1e-6)
+            break;
+
+        double df = 1;
+        double c = 1;
+        double phi_d2 = phi_d*phi_d;
+        double phi_d_accum = 1;
+        for (int k = 0; k < dist->num_coeffs; ++k) {
+            c += 2;
+            phi_d_accum *= phi_d2;
+            df += dist->coeffs[k] * c * phi_d_accum;
+        }
+        phi_d -= f/df;
+    }
+    double theta = atan2(ray[1],ray[0]);
+    *x = sin(phi_d)*cos(theta);
+    *y = sin(phi_d)*sin(theta);
+    double z = cos(phi_d);
+    if (z < CAMERA_EPSILON)
+        return -1;
+    *x /= z;
+    *y /= z;
+    return 0;
+}
+
+static int
+angular_poly_undistort_func(const void *data, const double x, const double y,
+                            double ray[3])
+{
+    AngularPolyDistortionParams *dist = (AngularPolyDistortionParams*)data;
+    double phi_d = acos(1/sqrt(x*x+y*y+1));
+    double phi_u = angular_poly_evaluate(dist, phi_d);
+    double theta = atan2(y,x);
+    ray[0] = sin(phi_u)*cos(theta);
+    ray[1] = sin(phi_u)*sin(theta);
+    ray[2] = cos(phi_u);
+    return 0;
+}
+
+BotDistortionObj*
+bot_angular_poly_distortion_create (const double *coeffs, const int num_coeffs)
+{
+    BotDistortionObj *dist = (BotDistortionObj*)calloc(1, sizeof(BotDistortionObj));
+    assert (NULL != dist);
+
+    AngularPolyDistortionParams *params = (AngularPolyDistortionParams*)calloc(1, sizeof(AngularPolyDistortionParams));
+    params->num_coeffs = num_coeffs;
+    params->coeffs = calloc(num_coeffs, sizeof(double));
+    memcpy(params->coeffs, coeffs, num_coeffs*sizeof(double));
+    dist->params = (void*)params;
+
+    BotDistortionFuncs *funcs = (BotDistortionFuncs*)calloc(1, sizeof(BotDistortionFuncs));
+    funcs->dist_func = angular_poly_distort_func;
+    funcs->undist_func = angular_poly_undistort_func;
+    funcs->destroy_func = angular_poly_distortion_destroy;
+    dist->funcs = funcs;
+
+    return dist;
+}
+
+
+
 static int
 null_distort_func(const void *data, const double ray[3],
                   double *x, double *y)

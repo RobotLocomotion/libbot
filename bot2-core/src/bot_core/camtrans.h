@@ -69,6 +69,21 @@ extern "C" {
                                           const double undist_step);
 
     /**
+     * bot_angular_poly_distortion_create:
+     * @coeffs: array of odd polynomial coefficients
+     * @num_coeffs: number of coefficients in array
+     *
+     * model is:
+     *  theta_undist = theta_dist + c0*theta_dist^3 + c1*theta_dist^5 + ...
+     *  where theta is the angle between the principal ray and the input ray
+     *
+     * Returns: distortion model object for use in camtrans
+     */
+    BotDistortionObj*
+    bot_angular_poly_distortion_create (const double* coeffs,
+                                        const int num_coeffs);
+
+    /**
      * bot_null_distortion_create:
      * 
      * TODO description
