@@ -349,7 +349,7 @@ def do_add_script_dialog(sheriff, window):
 
 def do_edit_script_dialog(sheriff, window, script):
     if sheriff.get_active_script():
-        _do_err_dialog("Script editing is not allowed while a script is running.")
+        _do_err_dialog(window, "Script editing is not allowed while a script is running.")
         return
 
     dlg = AddModifyScriptDialog (window, script)
