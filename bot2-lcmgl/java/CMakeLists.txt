@@ -42,7 +42,7 @@ endif()
 
 # add a rule to build the .class files from from the .java files
 add_custom_command(OUTPUT ${class_files} COMMAND 
-    ${JAVA_COMPILE} -source 6 -cp ${classpath} -d ${class_dir} ${java_files} 
+    ${JAVA_COMPILE} -source 6 -target 6 -cp ${classpath} -d ${class_dir} ${java_files} 
     DEPENDS ${java_files} VERBATIM)
 
 # add a rule to build a .jar file from the .class files
