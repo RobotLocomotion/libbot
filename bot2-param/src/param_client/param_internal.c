@@ -520,28 +520,35 @@ static int parse_container(Parser * p, BotParamElement * cont, BotParamToken end
   BotParamToken tok;
   char str[256];
   BotParamElement * child = NULL;
+  int child_exists = 0;
 
   while (get_token(p, &tok, str, sizeof(str)) == 0) {
     //printf ("t %d: %s\n", tok, str);
     if (!child && tok == TokIdentifier) {
-      BotParamElement* existing_el = find_key(cont, str, 1);
-      if (NULL == existing_el)
+      BotParamElement* existing_el = find_key(cont, str, 0);
+      if (NULL == existing_el) {
         child = new_element(str);
-      else
+        child_exists = 0;
+      }
+      else {
         child = existing_el;
+        child_exists = 1;
+      }
     }
     else if (child && tok == TokAssign) {
       child->type = BotParamArray;
       if (parse_right_side(p, child) < 0)
         goto fail;
-      add_child(p, cont, child);
+      if (!child_exists)
+        add_child(p, cont, child);
       child = NULL;
     }
     else if (child && tok == TokOpenStruct) {
       child->type = BotParamContainer;
       if (parse_container(p, child, TokCloseStruct) < 0)
         goto fail;
-      add_child(p, cont, child);
+      if (!child_exists)
+        add_child(p, cont, child);
       child = NULL;
     }
     else if (!child && tok == end_token)
