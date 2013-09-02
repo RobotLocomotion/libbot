@@ -9,7 +9,8 @@ include_directories ( ${X11_INCLUDE_DIR} )
 
 add_library(bot2-vis SHARED ${c_files})
 
-set(REQUIRED_LIBS ${LIBJPEG_LIBRARIES} ${GLUT_LIBRARIES} ${ZLIB_LIBRARIES} ${X11_LIBRARIES})    
+#set(REQUIRED_LIBS ${LIBJPEG_LIBRARIES} ${GLUT_LIBRARIES} ${ZLIB_LIBRARIES} ${X11_LIBRARIES})    
+set(REQUIRED_LIBS ${LIBJPEG_LIBRARIES} ${GLUT_LIBRARIES} ${ZLIB_LIBRARIES})
 target_link_libraries(bot2-vis ${REQUIRED_LIBS})
 
 set(REQUIRED_PACAKGES glib-2.0 gtk+-2.0 gdk-pixbuf-2.0 lcm bot2-core libpng gl glu)
