@@ -459,6 +459,74 @@ class Sheriff(gobject.GObject):
     gobject.timeout_add(1000, lambda *s: sheriff.send_orders() or True)
     mainloop.run()
     \endcode
+
+    ## Signals ##
+    The Sheriff object exposes a number of GObject signals that you can use to
+    register a callback function that gets called when a particular event
+    happens.
+
+    For example, to be notified when the status of a command changes:
+
+    \code
+    def on_command_status_changed(cmd_object, old_status, new_status):
+        print("Command %s status changed from %s -> %s" % (cmd_obj.command_id,
+            old_status, new_status)
+
+    sheriff.connect("command-status-changed", on_command_status_changed)
+    \endcode
+
+    The signals and their parameters are:
+
+    Signal | Emitted when
+    --------|----------
+    "deputy-info-received" | Information from a deputy is received and processed
+    "command-added" | A new command is added to the sheriff
+    "command-removed" | A command is removed from the sheriff
+    "command-status-changed" | The status of a command changes (e.g., running, stopped, etc.)
+    "script-started" | A script begins executing
+    "script-action-executing" | A single action in a script begins to run (e.g., start a command)
+    "script-finished" | A script finishes execution
+    \endcode
+
+    #### deputy-info-received(deputy_object) ####
+    Signal emitted when information from a deputy is received and processed.
+
+    param `deputy_object` is a SheriffDeputy corresponding to the updated deputy.
+
+    #### command-added(deputy_object, cmd_object) ####
+    Signal emitted when a new command is added to the sheriff.
+
+    param `deputy_object` is a SheriffDeputy for the deputy that owns the command.
+    param `cmd_object` is a SheriffDeputyCommand for the new command.
+
+    #### command-removed(deputy_object, cmd_object) ####
+    Signal emitted when a command is removed from the sheriff.
+
+    param `deputy_object` is a SheriffDeputy for the deputy that owned the command.
+    param `cmd_object` is a SheriffDeputyCommand for the removed command.
+
+    #### command-status-changed(cmd_object, old_status, new_status) ####
+    Emitted when the status of a command changes (e.g., running, stopped, etc.).
+
+    param `cmd_object` is a SheriffDeputyCommand for the command.
+    param `old_status` indicates the old command status.
+    param `new_status` indicates the new command status.
+
+    #### script-started(script_object)
+    Emitted when a script begins executing.
+
+    \param `script_object` a SheriffScript object.
+
+    #### `script-action-executing(script_object, action)`
+    Emitted when a single action in a script begins to run (e.g., start a command)
+
+    \param `script_object` a SheriffScript object
+    \param `action` one of: StartStopRestartAction, WaitMsAction, WaitStatusAction, RunScriptAction
+
+    #### `script-finished(script_object)`
+    Emitted when a script finishes execution.
+
+    \param `script_object` a SheriffScript object
     """
 
     __gsignals__ = {
