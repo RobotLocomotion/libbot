@@ -73,9 +73,11 @@ class SheriffCommandConsole(gtk.ScrolledWindow):
         # stdout rate limit maintenance events
         gobject.timeout_add (500, self._stdout_rate_limit_upkeep)
 
-        self.sheriff.connect ("command-added", self._on_sheriff_command_added)
-        self.sheriff.connect ("command-removed", self._on_sheriff_command_removed)
-        self.sheriff.connect ("command-status-changed", self._on_sheriff_command_status_changed)
+        self.sheriff.command_added.connect(self._on_sheriff_command_added)
+        self.sheriff.command_removed.connect(self._on_sheriff_command_removed)
+        self.sheriff.command_status_changed.connect(self._on_sheriff_command_status_changed)
+
+        self._cmd_extradata = {}
 
         lc.subscribe ("PMD_PRINTF", self.on_procman_printf)
 
@@ -112,8 +114,9 @@ class SheriffCommandConsole(gtk.ScrolledWindow):
 
     def _stdout_rate_limit_upkeep (self):
         for cmd in self.sheriff.get_all_commands ():
-            extradata = cmd.get_data ("extradata")
-            if not extradata: continue
+            extradata = self._cmd_extradata.get(cmd, None)
+            if not extradata:
+                continue
             if extradata.printf_drop_count:
                 deputy = self.sheriff.get_command_deputy (cmd)
                 self._add_text_to_buffer (extradata.tb, now_str() +
@@ -172,17 +175,18 @@ class SheriffCommandConsole(gtk.ScrolledWindow):
             tb.delete (start_iter, chop_iter)
 
     # Sheriff event handlers
-    def _on_sheriff_command_added (self, sheriff, deputy, command):
+    def _on_sheriff_command_added (self, deputy, command):
         extradata = CommandExtraData (self.sheriff_tb.get_tag_table())
-        command.set_data ("extradata", extradata)
+        self._cmd_extradata[command] = extradata
         self._add_text_to_buffer (self.sheriff_tb, now_str() +
                 "Added [%s] [%s] [%s]\n" % (deputy.name, command.command_id, command.exec_str))
 
-    def _on_sheriff_command_removed (self, sheriff, deputy, command):
+    def _on_sheriff_command_removed (self, deputy, command):
+        del self._cmd_extradata[command]
         self._add_text_to_buffer (self.sheriff_tb, now_str() +
                 "[%s] removed [%s] [%s]\n" % (deputy.name, command.command_id, command.exec_str))
 
-    def _on_sheriff_command_status_changed (self, sheriff, cmd,
+    def _on_sheriff_command_status_changed (self, cmd,
             old_status, new_status):
         self._add_text_to_buffer (self.sheriff_tb, now_str() +
                 "[%s] new status: %s\n" % (cmd.command_id, new_status))
@@ -244,8 +248,9 @@ class SheriffCommandConsole(gtk.ScrolledWindow):
                 # TODO
                 return
 
-            extradata = cmd.get_data ("extradata")
-            if not extradata: return
+            extradata = self._cmd_extradata.get(cmd, None)
+            if not extradata:
+                return
 
             # rate limit
             msg_count = sum (extradata.printf_keep_count)
@@ -264,8 +269,9 @@ class SheriffCommandConsole(gtk.ScrolledWindow):
             self._add_text_to_buffer (extradata.tb, toadd)
 
     def show_command_buffer(self, cmd):
-        extradata = cmd.get_data ("extradata")
-        self.stdout_textview.set_buffer (extradata.tb)
+        extradata = self._cmd_extradata.get(cmd, None)
+        if extradata:
+            self.stdout_textview.set_buffer (extradata.tb)
 
     def show_sheriff_buffer(self):
         self.stdout_textview.set_buffer (self.sheriff_tb)

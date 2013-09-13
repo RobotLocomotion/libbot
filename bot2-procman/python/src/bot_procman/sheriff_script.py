@@ -1,6 +1,11 @@
 from bot_procman.sheriff_config import ScriptNode, WaitStatusActionNode, WaitMsActionNode, StartStopRestartActionNode, RunScriptActionNode, escape_str
 
 class StartStopRestartAction(object):
+    """Script action to start, stop, or restart a command or group.
+
+    \ingroup python_api
+
+    """
     def __init__(self, action_type, ident_type, ident, wait_status):
         assert action_type in ["start", "stop", "restart"]
         assert ident_type in [ "everything", "group", "cmd" ]
@@ -29,6 +34,11 @@ class StartStopRestartAction(object):
             return "%s %s;" % (self.action_type, ident_str)
 
 class WaitMsAction(object):
+    """Script action to wait a fixed number of milliseconds.
+
+    \ingroup python_api
+
+    """
     def __init__(self, delay_ms):
         self.delay_ms = delay_ms
         self.action_type = "wait_ms"
@@ -40,6 +50,11 @@ class WaitMsAction(object):
         return "wait ms %d;" % self.delay_ms
 
 class WaitStatusAction(object):
+    """Script action to wait for a command or group to change status.
+
+    \ingroup python_api
+
+    """
     def __init__(self, ident_type, ident, wait_status):
         self.ident_type = ident_type
         self.ident = ident
@@ -55,6 +70,11 @@ class WaitStatusAction(object):
                 (self.ident_type, escape_str(self.ident), self.wait_status)
 
 class RunScriptAction(object):
+    """Script action to run a subscript.
+
+    \ingroup python_api
+
+    """
     def __init__(self, script_name):
         self.script_name = script_name
         self.action_type = "run_script"
@@ -65,8 +85,12 @@ class RunScriptAction(object):
     def __str__(self):
         return "run_script \"%s\";" % escape_str(self.script_name)
 
-## A simple script that can be executed by the Sheriff.
 class SheriffScript(object):
+    """A simple script that can be executed by the Sheriff.
+
+    \ingroup python_api
+
+    """
     def __init__(self, name):
         self.name = name
         self.actions = []

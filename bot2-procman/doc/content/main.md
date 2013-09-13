@@ -1,9 +1,7 @@
 Procman {#mainpage}
 =======
 
-
-Introduction {#procman_introduction}
-------------
+# Introduction {#procman_introduction}
 
 Procman is a set of tools for managing multiple processes distributed across
 one or more hosts.
@@ -17,8 +15,7 @@ A single GUI provides the following features:
 In addition to the GUI, there is also a Python API for more programmatic
 control of processes.
 
-Table of Contents {#procman_toc}
------------------
+# Table of Contents {#procman_toc}
 
 - \ref procman_tutorial
 - \ref procman_config_file

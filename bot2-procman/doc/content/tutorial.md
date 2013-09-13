@@ -18,8 +18,7 @@ and manage commands.
 - \ref procman_tutorial_command_managing
 - \ref procman_tutorial_config
 
-Starting a deputy and a sheriff {#procman_tutorial_starting}
--------------------------------
+# Starting a deputy and a sheriff {#procman_tutorial_starting}
 
 First, open up your favorite terminal program and run the deputy command:
 
@@ -53,8 +52,7 @@ In this case, the hostname is "contact", so the deputy is named "contact" as wel
 The _console pane_ shows console output (stdout and stderr) from running
 commands, and also status information from the sheriff.
 
-Creating a command {#procman_tutorial_command_creation}
-------------------
+# Creating a command {#procman_tutorial_command_creation}
 
 To create a command, select the menu item "Commands -> New command".
 
@@ -76,8 +74,7 @@ emulator.  If you don't have \c xterm installed, replace the command with
 something you do have on your system.  We've also named the command "terminal
 emulator".
 
-Managing commands {#procman_tutorial_command_managing}
------------------
+# Managing commands {#procman_tutorial_command_managing}
 Now that we have a command, we can run it.  Click on the command in the command
 pane so that it is highlighted.  Once the command is selected, click on the menu
 bar item "Commands -> Start".
@@ -97,8 +94,7 @@ You can stop, restart, move, and edit the selected command using the
 There are a bunch more features to Procman, but creating, starting, and
 stopping processes is its core functionality.
 
-Saving and loading configurations {#procman_tutorial_config}
----------------------------------
+# Saving and loading configurations {#procman_tutorial_config}
 
 It's often useful to save the commands you've created so that you can easily
 load them and run them again later on.  To do this, select "File -> Save config

@@ -76,15 +76,15 @@ class SheriffGtk(object):
 
         # create sheriff and subscribe to events
         self.sheriff = sheriff.Sheriff (self.lc)
-        self.sheriff.connect("command-added", self._schedule_cmds_update)
-        self.sheriff.connect("command-removed", self._schedule_cmds_update)
-        self.sheriff.connect("command-status-changed", self._schedule_cmds_update)
-        self.sheriff.connect("command-group-changed", self._schedule_cmds_update)
-        self.sheriff.connect("script-started", self._on_script_started)
-        self.sheriff.connect("script-action-executing", self._on_script_action_executing)
-        self.sheriff.connect("script-finished", self._on_script_finished)
-        self.sheriff.connect("script-added", self._on_script_added)
-        self.sheriff.connect("script-removed", self._on_script_removed)
+        self.sheriff.command_added.connect(self._schedule_cmds_update)
+        self.sheriff.command_removed.connect(self._schedule_cmds_update)
+        self.sheriff.command_status_changed.connect(self._schedule_cmds_update)
+        self.sheriff.command_group_changed.connect(self._schedule_cmds_update)
+        self.sheriff.script_started.connect(self._on_script_started)
+        self.sheriff.script_action_executing.connect(self._on_script_action_executing)
+        self.sheriff.script_finished.connect(self._on_script_finished)
+        self.sheriff.script_added.connect(self._on_script_added)
+        self.sheriff.script_removed.connect(self._on_script_removed)
 
         # update very soon
         gobject.timeout_add(100, lambda *s: self.hosts_ts.update() and False)
@@ -326,7 +326,7 @@ class SheriffGtk(object):
             msgdlg.run ()
             msgdlg.destroy ()
 
-    def _on_script_started(self, sheriff, script):
+    def _on_script_started(self, script):
         self._update_menu_item_sensitivities()
         cid = self.statusbar_context_script
         if self.statusbar_context_script_msg is not None:
@@ -334,13 +334,13 @@ class SheriffGtk(object):
             self.statusbar_context_script_msg = self.statusbar.push(cid, \
                     "Script %s: start" % script.name)
 
-    def _on_script_action_executing(self, sheriff, script, action):
+    def _on_script_action_executing(self, script, action):
         cid = self.statusbar_context_script
         self.statusbar.pop(cid)
         msg = "Action: %s" % str(action)
         self.statusbar_context_script_msg = self.statusbar.push(cid, msg)
 
-    def _on_script_finished(self, sheriff, script):
+    def _on_script_finished(self, script):
         self._update_menu_item_sensitivities()
         cid = self.statusbar_context_script
         self.statusbar.pop(cid)
@@ -440,15 +440,15 @@ class SheriffGtk(object):
         self.edit_script_mi.set_sensitive(True)
         self.remove_script_mi.set_sensitive(True)
 
-    def _on_script_added(self, sheriff, script):
+    def _on_script_added(self, script):
         self._maybe_add_script_menu_item(script)
 
-    def _on_script_removed(self, sheriff, script):
+    def _on_script_removed(self, script):
         name_parts = split_script_name(script.name)
         for menu in [ self.scripts_menu, self.edit_scripts_menu, self.remove_scripts_menu ]:
             self._remove_script_menuitems(menu, script, name_parts)
 
-        if not sheriff.get_scripts():
+        if not self.sheriff.get_scripts():
             self.edit_script_mi.set_sensitive(False)
             self.remove_script_mi.set_sensitive(False)
 
@@ -563,7 +563,7 @@ class SheriffGtk(object):
     def on_procman_orders (self, channel, data):
         msg = orders_t.decode (data)
         if not self.sheriff.is_observer () and \
-                self.sheriff.name != msg.sheriff_name:
+                self.sheriff.get_name() != msg.sheriff_name:
             # detected the presence of another sheriff that is not this one.
             # self-demote to prevent command thrashing
             self.set_observer (True)
@@ -667,7 +667,7 @@ class SheriffHeadless(object):
                 self._terminate_spawned_deputy()
                 sys.exit(1)
 
-            self.sheriff.connect("script-finished", self._on_script_finished)
+            self.sheriff.script_finished.connect(self._on_script_finished)
 
             # delay script execution by 200 ms.
             gobject.timeout_add(200, self._start_script)
