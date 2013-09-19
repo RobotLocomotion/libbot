@@ -18,5 +18,6 @@ control of processes.
 # Table of Contents {#procman_toc}
 
 - \ref procman_tutorial
+- [Design overview](\ref procman_design)
 - \ref procman_config_file
-- \ref procman_deputies_sheriffs
+- [Communications protocol](\ref procman_comms)
