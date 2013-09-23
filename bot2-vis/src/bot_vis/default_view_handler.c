@@ -18,7 +18,7 @@
 #include "default_view_handler.h"
 
 #define EYE_MIN_DIST 0.1
-#define EYE_MAX_DIST 150
+#define EYE_MAX_DIST 10000
 #define EYE_ZOOM_INC (EYE_MAX_DIST - EYE_MIN_DIST) / 100
 #define MAX_MOTION_MAGNITUDE 2.0
 #define MIN_MOTION_MAGNITUDE 0.0001
