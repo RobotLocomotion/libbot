@@ -6,7 +6,7 @@ import pango
 
 from bot_procman.printf_t import printf_t
 
-DEFAULT_MAX_KB_PER_SECOND = 4
+DEFAULT_MAX_KB_PER_SECOND = 500
 
 ANSI_CODES_TO_TEXT_TAG_PROPERTIES = { \
         "1" : ("weight", pango.WEIGHT_BOLD),
