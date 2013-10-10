@@ -214,7 +214,12 @@ bot_param_get_new_camtrans(BotParam *param, const char *cam_name)
   if (0 != bot_param_get_str(param, key, &distortion_model))
     goto fail;
 
-  if (strcmp(distortion_model, "spherical") == 0) {
+  if (strcmp(distortion_model, "null") == 0) {
+    BotDistortionObj* null_dist = bot_null_distortion_create();
+    BotCamTrans* null_camtrans = bot_camtrans_new(cam_name, width, height, fx, fy, cx, cy, skew, null_dist);
+    return null_camtrans;
+  }
+  else if (strcmp(distortion_model, "spherical") == 0) {
     double distortion_param;
     sprintf(key, "%s.distortion_params", prefix);
     if (1 != bot_param_get_double_array(param, key, &distortion_param, 1))
