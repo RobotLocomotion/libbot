@@ -113,6 +113,6 @@ cmd "terminal emulator" {
 
 It should be pretty straightforward to figure out the format, and you can edit
 the configuration files directly with a text editor.  For more information on
-the configuration file format, see the section \ref config_file.
+the configuration file format, see the [documentation on configuration files](\ref procman_config_file).
 
 To load a configuration, click on the menu bar item "File -> load config".
