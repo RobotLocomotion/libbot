@@ -99,7 +99,7 @@ Values are either quoted strings, or integers.
   - Integer.  When ordering a command to stop, a deputy first sends
   `stop_signal` and waits `stop_time_allowed` seconds for the command to exit.
   If it is still running after `stop_time_allowed` seconds elapses, then the
-  command is immediately sent a SIGNKILL.  If not specified, this defaults to
+  command is immediately sent a SIGKILL.  If not specified, this defaults to
   7.
 
 Some examples:
@@ -146,7 +146,7 @@ specification.  Note that environment variables are always evaluated in the
 deputy process at the time a command is started, and not on the sheriff.  For example:
 
 \code
-cmd "list home directory {
+cmd "list home directory" {
     exec = "ls ${HOME}";
     host = "deputy_name";
 }
