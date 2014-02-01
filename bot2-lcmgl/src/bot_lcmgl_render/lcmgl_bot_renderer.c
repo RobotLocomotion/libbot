@@ -33,6 +33,10 @@ static void my_free( BotRenderer *renderer )
 
 static void my_draw( BotViewer *viewer, BotRenderer *renderer )
 {
+    //Enable transparency
+    glEnable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
+
     BotLcmglRenderer *self = (BotLcmglRenderer*) renderer->user;
 
     // iterate over each channel
