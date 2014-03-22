@@ -77,8 +77,6 @@ struct _BotViewerPriv {
 
 static guint bot_viewer_signals[LAST_SIGNAL] = { 0 };
 
-static void stop_recording (BotViewer *self);
-
 void bot_viewer_request_redraw (BotViewer *self)
 {
     bot_gtk_gl_drawing_area_invalidate (self->gl_area);
@@ -102,8 +100,8 @@ on_render_timer (BotViewer * self)
     return TRUE;
 }
 
-static void 
-start_recording (BotViewer *self)
+void 
+bot_viewer_start_recording (BotViewer *self)
 {
     if (self->is_recording) {
         err ("viewer: already recording!!\n");
@@ -163,8 +161,8 @@ abort_recording:
     free (self->mov_bgr_buf);
 }
 
-static void 
-stop_recording (BotViewer *self)
+void 
+bot_viewer_stop_recording (BotViewer *self)
 {
     free(self->movie_buffer);
     self->movie_buffer = NULL;
@@ -888,9 +886,9 @@ on_record_toggled (GtkToggleToolButton *tb, void *user_data)
     int record = gtk_toggle_tool_button_get_active (tb);
 
     if (record && ! self->is_recording) {
-        start_recording (self);
+        bot_viewer_start_recording (self);
     } else {
-        stop_recording (self);
+        bot_viewer_stop_recording (self);
     }
 }
 

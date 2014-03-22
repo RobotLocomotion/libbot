@@ -387,6 +387,10 @@ void bot_viewer_unref(BotViewer *viewer);
 
 void bot_viewer_set_window_title (BotViewer *viewer, const char *window_name);
 
+void bot_viewer_start_recording (BotViewer *viewer);
+void bot_viewer_stop_recording (BotViewer *viewer);
+
+
 /**
  * bot_viewer_request_redraw:
  * @viewer: The viewer to redraw.
