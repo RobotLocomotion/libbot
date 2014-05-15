@@ -26,7 +26,7 @@ all:
 	@# Place additional commands here if you have any
 
 install_prereqs_homebrew :
-	brew install cmake gtk+
+	brew install cmake gtk+ libpng
 
 clean:
 	@for subdir in $(SUBDIRS); do \
