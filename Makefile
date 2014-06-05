@@ -25,6 +25,9 @@ all:
 	done
 	@# Place additional commands here if you have any
 
+install_prereqs_ubuntu:
+	apt-get install libglib2.0-dev python-dev python-gtk2 libgtk2.0-dev mesa-common-dev libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev libjpeg-dev
+
 install_prereqs_homebrew :
 	brew install cmake gtk+ libpng
 
