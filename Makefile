@@ -15,7 +15,7 @@ endif
 # build quietly by default.  For a verbose build, run "make VERBOSE=1"
 $(VERBOSE).SILENT:
 
-all: 
+all:
 	@[ -d $(BUILD_PREFIX) ] || mkdir -p $(BUILD_PREFIX) || exit 1
 	@for subdir in $(SUBDIRS); do \
 		echo "\n-------------------------------------------"; \
@@ -24,12 +24,6 @@ all:
 		$(MAKE) -C $$subdir all || exit 2; \
 	done
 	@# Place additional commands here if you have any
-
-install_prereqs_ubuntu:
-	apt-get install libglib2.0-dev python-dev python-gtk2 libgtk2.0-dev mesa-common-dev libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev libjpeg-dev
-
-install_prereqs_homebrew :
-	brew install cmake gtk+ libpng
 
 clean:
 	@for subdir in $(SUBDIRS); do \
