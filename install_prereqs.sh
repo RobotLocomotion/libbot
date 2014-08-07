@@ -2,7 +2,7 @@
 
 case $1 in
   ("homebrew")
-    brew install cmake gtk+ libpng ;;
+    brew install cmake gtk+ libpng libjpeg;;
   ("macports")
     ;;
   ("ubuntu")
