@@ -15,8 +15,6 @@ list(APPEND OPENGL_LIBRARIES GL)
 set(GLUT_CFLAGS "")
 set(GLUT_LIBRARIES -lglut)
 
-set(LIBJPEG_CFLAGS "")
-set(LIBJPEG_LIBRARIES -ljpeg)
 
 pkg_check_modules(GLIB2 REQUIRED glib-2.0)
 pkg_check_modules(LCM REQUIRED lcm)

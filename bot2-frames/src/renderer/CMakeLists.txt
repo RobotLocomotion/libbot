@@ -8,8 +8,7 @@ set(REQUIRED_PACKAGES bot2-core bot2-param-client bot2-vis bot2-frames)
 pods_use_pkg_config_packages(bot2-frames-renderers ${REQUIRED_PACKAGES})
 
 target_link_libraries(bot2-frames-renderers 
-    ${OPENGL_LIBRARIES} 
-    ${LIBJPEG_LIBRARIES})
+    ${OPENGL_LIBRARIES})
 
 # set the library API version.  Increment this every time the public API
 # changes.
@@ -26,7 +25,7 @@ pods_install_libraries(bot2-frames-renderers)
 # use it.
 pods_install_pkg_config_file(bot2-frames-renderers
     CFLAGS
-    LIBS -lbot2-frames-renderers -ljpeg
+    LIBS -lbot2-frames-renderers
     REQUIRES ${REQUIRED_PACKAGES}
     VERSION 0.0.1)
     
