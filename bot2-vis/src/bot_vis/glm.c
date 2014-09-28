@@ -1931,7 +1931,7 @@ glmDraw(GLMmodel* model, GLuint mode)
 	map_diffuse = -1;	/* default material */
 	group = model->groups;
 	while (group) {
-	    if (mode & (GLM_MATERIAL|GLM_COLOR|GLM_TEXTURE)) {
+	  if ((mode & (GLM_MATERIAL|GLM_COLOR|GLM_TEXTURE)) && group->material) {
 		material = group->material;
 		materialp = &model->materials[material];
 		blending = (materialp->diffuse[3] < 1.0);
