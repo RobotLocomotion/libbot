@@ -12,8 +12,7 @@ set(GLUT_LIBRARIES -lglut)
 
 set(ZLIB_LIBRARIES -lz)
 
-set(LIBJPEG_CFLAGS "")
-set(LIBJPEG_LIBRARIES -ljpeg)
+find_package(JPEG REQUIRED)
 
 add_definitions(-std=gnu99)
 
