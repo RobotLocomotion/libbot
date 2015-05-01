@@ -24,7 +24,7 @@ BUILD_TYPE="Release"
 endif
 
 all: pod-build/Makefile
-	$(MAKE) -C pod-build all install
+	cmake --build pod-build --config $(BUILD_TYPE) --target install
 
 pod-build/Makefile:
 	$(MAKE) configure

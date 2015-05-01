@@ -9,12 +9,13 @@ add_library(bot2-core SHARED ${c_files})
 # changes.
 set_target_properties(bot2-core PROPERTIES SOVERSION 1)
 
-set(REQUIRED_LIBS glib-2.0 lcm lcmtypes_bot2-core)
+set(REQUIRED_LIBS glib-2.0 lcm)
 
 pods_use_pkg_config_packages(bot2-core ${REQUIRED_LIBS})
 
 target_link_libraries(bot2-core
-    m)
+    m
+    ${LCMTYPES_C_LIBRARY})
 
 pods_install_libraries(bot2-core)
 
