@@ -262,7 +262,7 @@ bot_angular_poly_distortion_create (const double *coeffs, const int num_coeffs)
 
     AngularPolyDistortionParams *params = (AngularPolyDistortionParams*)calloc(1, sizeof(AngularPolyDistortionParams));
     params->num_coeffs = num_coeffs;
-    params->coeffs = calloc(num_coeffs, sizeof(double));
+    params->coeffs = (double*)calloc(num_coeffs, sizeof(double));
     memcpy(params->coeffs, coeffs, num_coeffs*sizeof(double));
     dist->params = (void*)params;
 

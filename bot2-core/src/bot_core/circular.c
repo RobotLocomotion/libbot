@@ -7,7 +7,7 @@
 BotCircular *
 bot_circular_new (int capacity, int element_size)
 {
-    BotCircular * circular = malloc (sizeof (BotCircular));
+    BotCircular * circular = (BotCircular*)malloc (sizeof (BotCircular));
     if (!circular)
         return NULL;
     memset (circular, 0, sizeof (BotCircular));

@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "color_util.h"
 
+
 // random number between [0, 1)
 static inline float _randf()
 {
@@ -62,8 +63,8 @@ float *bot_color_util_jet(double v)
     if (!jet_colors_initialized)
         init_color_table_jet();
 
-    v = fmax(0, v);
-    v = fmin(1, v);
+    if (v<0.0) v=0.0;
+    if (v>1.0) v=1.0;
 
     int idx = (JET_COLORS_LUT_SIZE - 1) * v;
     return jet_colors[idx];
