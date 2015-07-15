@@ -7,8 +7,18 @@
 #include <stdint.h>
 #include <math.h>
 
-#include <bot_core/bot_core.h>
-#include <bot_vis/bot_vis.h>
+#ifdef USE_BOT_VIS
+  #include <bot_core/bot_core.h>
+  #include <bot_vis/bot_vis.h>
+#else
+  #ifdef __APPLE__
+    #include <OpenGL/gl.h>
+    #include <OpenGL/glu.h>
+  #else
+    #include <GL/gl.h>
+    #include <GL/glu.h>
+  #endif
+#endif
 
 #include <lcmtypes/bot_lcmgl_data_t.h>
 #include "../bot_lcmgl_client/lcmgl.h"
@@ -128,10 +138,12 @@ static void gl_box(double xyz[3], double dim[3])
     glEnd();
 }
 
+#ifdef USE_BOT_VIS
 typedef struct {
     int lcmgl_tex_id;
     BotGlTexture *tex;
 } _lcmgl_texture_t;
+#endif
 
 void bot_lcmgl_decode(uint8_t *data, int datalen)
 {
@@ -140,8 +152,10 @@ void bot_lcmgl_decode(uint8_t *data, int datalen)
     ldec.datalen = datalen;
     ldec.datapos = 0;
 
+#ifdef USE_BOT_VIS
     _lcmgl_texture_t **textures = NULL;
     int ntextures = 0;
+#endif
 
     while (ldec.datapos < ldec.datalen) {
 
@@ -409,7 +423,12 @@ void bot_lcmgl_decode(uint8_t *data, int datalen)
 
             for (int i = 0; i <= segments; i++) {
                 double s,c;
+#ifdef USE_BOT_VIS
                 bot_fasttrig_sincos(2*M_PI/segments * i, &s, &c);
+#else
+                s = sin(2*M_PI/segments * i);
+                c = cos(2*M_PI/segments * i);
+#endif
                 glVertex3d(xyz[0] + c*radius, xyz[1] + s*radius, xyz[2]);
             }
 
@@ -481,6 +500,7 @@ void bot_lcmgl_decode(uint8_t *data, int datalen)
 
         case BOT_LCMGL_TEXT:
         {
+#ifdef USE_BOT_VIS
             int font = lcmgl_decode_u8(&ldec);
             int flags = lcmgl_decode_u8(&ldec);
 
@@ -496,11 +516,15 @@ void bot_lcmgl_decode(uint8_t *data, int datalen)
             buf[len] = 0;
 
             bot_gl_draw_text(xyz, NULL, buf, 0);
+#else
+            fprintf(stderr, "ERROR, unsupported client request BOT_LCMGL_TEXT\n");
+#endif
             break;
         }
 
         case BOT_LCMGL_TEXT_LONG:
         {
+#ifdef USE_BOT_VIS
             uint32_t font = lcmgl_decode_u32(&ldec);
             uint32_t flags = lcmgl_decode_u32(&ldec);
 
@@ -517,6 +541,9 @@ void bot_lcmgl_decode(uint8_t *data, int datalen)
             buf[len] = 0;
 
             bot_gl_draw_text(xyz, NULL, buf, flags);
+#else
+            fprintf(stderr, "ERROR, unsupported client request BOT_LCMGL_TEXT_LONG\n");
+#endif
             break;
         }
         case BOT_LCMGL_MATERIALF:
@@ -531,6 +558,7 @@ void bot_lcmgl_decode(uint8_t *data, int datalen)
         }
         case BOT_LCMGL_TEX_2D:
         {
+#ifdef USE_BOT_VIS
             uint32_t id = lcmgl_decode_u32(&ldec);
             uint32_t width = lcmgl_decode_u32(&ldec);
             uint32_t height = lcmgl_decode_u32(&ldec);
@@ -620,10 +648,14 @@ void bot_lcmgl_decode(uint8_t *data, int datalen)
             if(id != ntextures) {
                 // TODO emit warning...
             }
+#else
+            fprintf(stderr, "ERROR, unsupported client request BOT_LCMGL_TEX_2D\n");
+#endif
             break;
         }
         case BOT_LCMGL_TEX_DRAW_QUAD:
         {
+#ifdef USE_BOT_VIS
             int id = lcmgl_decode_u32(&ldec);
 
             double x_top_left = lcmgl_decode_double(&ldec);
@@ -650,6 +682,9 @@ void bot_lcmgl_decode(uint8_t *data, int datalen)
                         x_bot_right, y_bot_right, z_bot_right,
                         x_bot_left, y_bot_left, z_bot_left);
             }
+#else
+            fprintf(stderr, "ERROR, unsupported client request BOT_LCMGL_TEX_DRAW_QUAD\n");
+#endif
             break;
         }
 
@@ -671,10 +706,13 @@ void bot_lcmgl_decode(uint8_t *data, int datalen)
         }
     }
 
+#ifdef USE_BOT_VIS
     for(int i=0; i<ntextures; i++) {
         bot_gl_texture_free(textures[i]->tex);
         free(textures[i]);
     }
     free(textures);
+#endif
+
 }
 
