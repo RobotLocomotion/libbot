@@ -1,13 +1,24 @@
 add_definitions(-std=gnu99)
 
-file(GLOB c_files *.c)
-file(GLOB h_files *.h)
+set(c_files lcmgl_decode.c)
+set(h_files lcmgl_decode.h)
+set(REQUIRED_LIBS lcmtypes_bot2-lcmgl)
+
+if (USE_BOT_VIS)
+  list(APPEND c_files lcmgl_bot_renderer.c)
+  list(APPEND h_files lcmgl_decode.h)
+  list(APPEND REQUIRED_LIBS bot2-vis lcmtypes_bot2-lcmgl gl)
+  add_definitions(-DUSE_BOT_VIS)
+endif()
+
 
 add_library(bot2-lcmgl-renderer SHARED ${c_files})
 
-set(REQUIRED_LIBS bot2-vis lcmtypes_bot2-lcmgl gl)
+find_package(OpenGL REQUIRED)
+target_link_libraries(bot2-lcmgl-renderer ${OPENGL_LIBRARIES})
+
 pods_use_pkg_config_packages(bot2-lcmgl-renderer ${REQUIRED_LIBS})
-    
+
 
 # set the library API version.  Increment this every time the public API
 # changes.
