@@ -6,7 +6,7 @@ set(REQUIRED_LIBS lcmtypes_bot2-lcmgl)
 
 if (USE_BOT_VIS)
   list(APPEND c_files lcmgl_bot_renderer.c)
-  list(APPEND h_files lcmgl_decode.h)
+  list(APPEND h_files lcmgl_bot_renderer.h)
   list(APPEND REQUIRED_LIBS bot2-vis lcmtypes_bot2-lcmgl gl)
   add_definitions(-DUSE_BOT_VIS)
 endif()
