@@ -10,8 +10,7 @@ add_executable(bot-procman-deputy
 pods_use_pkg_config_packages(bot-procman-deputy
     glib-2.0
     gthread-2.0
-    lcm
-    lcmtypes_bot2-procman)
-target_link_libraries(bot-procman-deputy util)
+    lcm)
+target_link_libraries(bot-procman-deputy util lcmtypes_bot2-procman)
 
 pods_install_executables(bot-procman-deputy)

@@ -467,6 +467,7 @@ endfunction()
 
 macro(lcmtypes_build)
     find_package(PkgConfig REQUIRED)
+    message(STATUS "PKG_CONFIG_PATH=$ENV{PKG_CONFIG_PATH}")
     pkg_check_modules(LCM REQUIRED lcm)
     
     #find lcm-gen (it may be in the install path)

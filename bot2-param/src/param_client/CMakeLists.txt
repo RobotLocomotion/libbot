@@ -3,9 +3,10 @@ add_definitions(-std=gnu99)
 add_library(bot2-param-client SHARED
     param_internal.c param_util.c)
     
-set(REQUIRED_LIBS lcm bot2-core glib-2.0 lcmtypes_bot2-param)
-
+set(REQUIRED_LIBS lcm bot2-core glib-2.0)
+target_link_libraries(bot2-param-client lcmtypes_bot2-param)
 pods_use_pkg_config_packages(bot2-param-client ${REQUIRED_LIBS})
+list(APPEND REQUIRED_LIBS lcmtypes_bot2-param)
 
 # set the library API version.  Increment this every time the public API
 # changes.

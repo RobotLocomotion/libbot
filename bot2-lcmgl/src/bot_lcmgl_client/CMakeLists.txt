@@ -10,9 +10,10 @@ add_library(${libname} SHARED ${c_files})
 #set(REQUIRED_LIBS ${LIBJPEG_LIBRARIES} ${GLUT_LIBRARIES} ${ZLIB_LIBRARIES})    
 target_link_libraries(${libname} ${ZLIB_LIBRARIES})
     
-set(REQUIRED_PACKAGES glib-2.0 lcm lcmtypes_bot2-lcmgl)    
+set(REQUIRED_PACKAGES glib-2.0 lcm)    
 pods_use_pkg_config_packages(${libname} ${REQUIRED_PACKAGES})
-    
+target_link_libraries(${libname} lcmtypes_bot2-lcmgl)
+list(APPEND REQUIRED_PACKAGES lcmtypes_bot2-lcmgl)        
 
 # set the library API version.  Increment this every time the public API
 # changes.
