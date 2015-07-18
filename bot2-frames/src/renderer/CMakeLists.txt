@@ -3,12 +3,13 @@ add_definitions(-std=gnu99)
 add_library(bot2-frames-renderers SHARED
     coord_frames_renderer.c articulated_body_renderer.c frame_modifier_renderer.c)
   
-set(REQUIRED_PACKAGES bot2-core bot2-param-client bot2-vis bot2-frames)
+set(REQUIRED_PACKAGES bot2-core bot2-param-client bot2-vis)
   
-pods_use_pkg_config_packages(bot2-frames-renderers ${REQUIRED_PACKAGES})
 
-target_link_libraries(bot2-frames-renderers 
+pods_use_pkg_config_packages(bot2-frames-renderers ${REQUIRED_PACKAGES})
+target_link_libraries(bot2-frames-renderers bot2-frames
     ${OPENGL_LIBRARIES})
+list(APPEND REQUIRED_PACKAGES bot2-frames)
 
 # set the library API version.  Increment this every time the public API
 # changes.
@@ -32,8 +33,7 @@ pods_install_pkg_config_file(bot2-frames-renderers
     
 #build the test-viewer
 add_executable(test-viewer test_viewer.c)
-target_link_libraries(test-viewer ${GLUT_LIBRARIES})
+target_link_libraries(test-viewer ${GLUT_LIBRARIES} bot2-frames-renderers)
 pods_use_pkg_config_packages(test-viewer 
                                          bot2-vis 
-                                         bot2-lcmgl-renderer 
-                                         bot2-frames-renderers)
+                                         bot2-lcmgl-renderer)

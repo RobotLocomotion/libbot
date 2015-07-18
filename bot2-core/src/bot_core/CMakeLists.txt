@@ -9,12 +9,10 @@ add_library(bot2-core SHARED ${c_files})
 # changes.
 set_target_properties(bot2-core PROPERTIES SOVERSION 1)
 
-set(REQUIRED_LIBS glib-2.0 lcm lcmtypes_bot2-core)
-
+set(REQUIRED_LIBS glib-2.0 lcm)
 pods_use_pkg_config_packages(bot2-core ${REQUIRED_LIBS})
-
-target_link_libraries(bot2-core
-    m)
+target_link_libraries(bot2-core m lcmtypes_bot2-core)
+list(APPEND REQUIRED_LIBS lcmtypes_bot2-core)
 
 pods_install_libraries(bot2-core)
 
@@ -22,5 +20,5 @@ pods_install_headers(${h_files} DESTINATION bot_core)
 
 pods_install_pkg_config_file(${PROJECT_NAME}
     LIBS -lbot2-core -lm
-    REQUIRES ${REQUIRED_LIBS}
+    REQUIRES ${REQUIRED_LIBS} 
     VERSION 0.0.1)
