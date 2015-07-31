@@ -34,11 +34,6 @@ clean:
 	done
 	@# Place additional commands here if you have any
 
+configure: 
+
 # other (custom) targets are passed through to the cmake-generated Makefile
-%::
-	@for subdir in $(SUBDIRS); do \
-		echo "\n-------------------------------------------"; \
-		echo "-- $$subdir"; \
-		echo "-------------------------------------------"; \
-		$(MAKE) -C $$subdir $@; \
-	done
