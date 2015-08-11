@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 2.4.6)
+cmake_policy(SET CMP0045 OLD)
 
 set(POD_NAME bot2-lcmgl)
 
