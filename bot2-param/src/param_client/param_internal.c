@@ -1523,8 +1523,10 @@ int bot_param_set_str_array(BotParam * param, const char * key, const char ** va
     return -1;
   }
 
+  BotParamElement* next = el->next;
   free_element(el);
   el = create_key(param->root, key);
+  el->next = next;
   int num_set = 0;
   for (int i = 0; i < len; ++i) {
     if (0 == add_value(NULL, el, vals[i])) ++num_set;
