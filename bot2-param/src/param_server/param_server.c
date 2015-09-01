@@ -25,6 +25,8 @@ typedef struct {
   gchar *update_channel;
   gchar *request_channel;
   gchar *set_channel;
+
+  bot_param_update_t_subscription_t *init_subscription;
 } param_server_t;
 
 void publish_params(param_server_t *self)
@@ -111,6 +113,20 @@ void on_param_set(const lcm_recv_buf_t *rbuf, const char * channel, const bot_pa
 
 }
 
+void on_param_init(const lcm_recv_buf_t *rbuf, const char * channel, const bot_param_update_t * msg, void * user)
+{
+  param_server_t * self = (param_server_t*) user;
+  if (msg->server_id == self->id) {
+      return;
+  }
+  if (self->params != NULL) {
+      bot_param_destroy(self->params);
+  }
+  self->params = bot_param_new_from_string(msg->params, strlen(msg->params));
+  bot_param_update_t_unsubscribe(self->lcm, self->init_subscription);
+  printf("latched params from %s\n", channel);
+}
+
 static gboolean on_timer(gpointer user)
 {
   param_server_t * self = (param_server_t*) user;
@@ -127,6 +143,7 @@ static void usage(int argc, char ** argv)
             "   -h, --help          print this help and exit\n"
             "   -s, --server-name   publishes params from named server\n"
             "   -l, --lcm-url       Use this specified LCM URL\n"
+            "   -m, --message-init  grab params from lcm message on specified channel\n"
             "\n"
             , argv[0]);
 }
@@ -147,16 +164,18 @@ int main(int argc, char ** argv)
   }
 
 
-  char *optstring = "hs:l:";
+  char *optstring = "hs:l:m::";
   struct option long_opts[] = {
       { "help", no_argument, NULL, 'h' },
       { "server-name", required_argument, NULL, 's' },
       { "lcm-url", required_argument, NULL, 'l' },
+      { "message-init", optional_argument, NULL, 'm' },
       { 0, 0, 0, 0 }
   };
   int c=-1;
   char *param_prefix = NULL;
   char *lcm_url = NULL;
+  char *message_init_channel = NULL;
   while ((c = getopt_long (argc, argv, optstring, long_opts, 0)) >= 0)
   {
       switch (c) {
@@ -165,6 +184,9 @@ int main(int argc, char ** argv)
           break;
       case 'l':
           lcm_url = optarg;
+          break;
+      case 'm':
+          message_init_channel = (optarg==NULL) ? BOT_PARAM_UPDATE_CHANNEL : optarg;
           break;
       case 'h':
       default:
@@ -199,6 +221,10 @@ int main(int argc, char ** argv)
   bot_param_update_t_subscribe(self->lcm, self->update_channel, on_param_update, (void *) self);
   bot_param_request_t_subscribe(self->lcm, self->request_channel, on_param_request, (void *) self);
   bot_param_set_t_subscribe(self->lcm, self->set_channel, on_param_set, (void *) self);
+
+  if (message_init_channel != NULL) {
+      self->init_subscription = bot_param_update_t_subscribe(self->lcm, message_init_channel, on_param_init, (void *)self);
+  }
 
   //timer to always publish params every 5sec
   g_timeout_add_full(G_PRIORITY_HIGH, (guint) 5.0 * 1000, on_timer, (gpointer) self, NULL);
