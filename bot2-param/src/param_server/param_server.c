@@ -201,13 +201,16 @@ int main(int argc, char ** argv)
 
   self->seqNo = 0;
   self->id = _timestamp_now();
-  self->params = bot_param_new_from_file(argv[optind]);
-  if (self->params==NULL){
-    fprintf(stderr, "Could not load params from %s\n", argv[optind]);
-    exit(1);
+  if (message_init_channel == NULL) {
+    self->params = bot_param_new_from_file(argv[optind]);
+    if (self->params==NULL){
+      fprintf(stderr, "Could not load params from %s\n", argv[optind]);
+      exit(1);
+    }
+    else{
+      fprintf(stderr, "Loaded params from %s\n", argv[optind]);
+    }
   }
-  else
-    fprintf(stderr, "Loaded params from %s\n", argv[optind]);
 
   // set channels here
   if (!param_prefix) param_prefix = getenv ("BOT_PARAM_SERVER_NAME");
@@ -223,6 +226,7 @@ int main(int argc, char ** argv)
   bot_param_set_t_subscribe(self->lcm, self->set_channel, on_param_set, (void *) self);
 
   if (message_init_channel != NULL) {
+      fprintf(stderr, "Listening to %s for params\n", message_init_channel);
       self->init_subscription = bot_param_update_t_subscribe(self->lcm, message_init_channel, on_param_init, (void *)self);
   }
 
