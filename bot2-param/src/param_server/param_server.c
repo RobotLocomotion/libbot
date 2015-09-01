@@ -71,7 +71,37 @@ void on_param_set(const lcm_recv_buf_t *rbuf, const char * channel, const bot_pa
   for (int i=0;i<msg->numEntries;i++){
     fprintf(stderr,"%s = %s\n", msg->entries[i].key, msg->entries[i].value);
 
-    if (bot_param_set_str(self->params, msg->entries[i].key, msg->entries[i].value) > 0) {
+    int success = 0;
+    if (msg->entries[i].is_array) {
+      char* str = msg->entries[i].value;
+      int string_len = strlen(str);
+      // count tokens
+      int len = 1;
+      for (int k = 0; k < string_len; ++k) {
+        if (str[k] == ',') len++;
+      }
+      char* vals[len];
+      int start_pos = 0;
+      int end_pos = 0;
+      int cur_val = 0;
+      for (int k = 0; k < string_len; ++k, ++end_pos) {
+        if ((k == string_len-1) || (str[k+1] == ',')) {
+          int substr_len = end_pos-start_pos+1;
+          vals[cur_val] = malloc(substr_len+1);
+          memcpy(vals[cur_val], str+start_pos, substr_len);
+          vals[cur_val][substr_len] = '\0';
+          k++;
+          start_pos = k+1;
+          end_pos = start_pos;
+          cur_val++;
+        }
+      }
+      success = (bot_param_set_str_array(self->params, msg->entries[i].key, vals, len) == len);
+    }
+    else {
+      success = (bot_param_set_str(self->params, msg->entries[i].key, msg->entries[i].value) == 0);
+    }
+    if (success) {
       self->seqNo++;
       publish_params(self);
     }

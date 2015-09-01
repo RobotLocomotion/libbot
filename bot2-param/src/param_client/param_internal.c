@@ -1514,28 +1514,23 @@ int bot_param_set_double_array(BotParam * param, const char * key, double * vals
 
 int bot_param_set_str_array(BotParam * param, const char * key, const char ** vals, int len)
 {
-  char* str;
-  char single_val[256];
-  int string_len = 1;
-  int single_len;
-  int i;
+  g_mutex_lock(param->lock);
 
-  str = malloc(1);
-  str[0] = '\0';
-  for (i = 0; i < len; ++i) {
-    if (i < len - 1)
-      sprintf(single_val, "%s,", vals[i]);
-    else
-      sprintf(single_val, "%s", vals[i]);
-    single_len = strlen(single_val);
-    str = realloc(str, string_len + single_len);
-    strcat(str, single_val);
-    string_len += single_len;
+  BotParamElement* el = find_key(param->root, key, 0);
+  if ((el != NULL) && (el->type != BotParamArray)) {
+    g_mutex_unlock(param->lock);
+    return -1;
   }
 
-  int ret_val = set_value(param, key, str);
-  free(str);
-  return ret_val;
+  free_element(el);
+  el = create_key(param->root, key);
+  int num_set = 0;
+  for (int i = 0; i < len; ++i) {
+    if (0 == add_value(NULL, el, vals[i])) ++num_set;
+  }
+
+  g_mutex_unlock(param->lock);
+  return num_set;
 }
 
 int64_t bot_param_get_server_id(BotParam * param)

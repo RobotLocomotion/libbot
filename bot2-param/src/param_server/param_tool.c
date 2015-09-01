@@ -34,6 +34,7 @@ int main(int argc, char ** argv)
   msg.sequence_number = bot_param_get_seqno(param);
   msg.server_id = bot_param_get_server_id(param);
   bot_param_entry_t entry;
+  entry.is_array = 0;
   entry.key = argv[1];
   entry.value = argv[2];
   msg.numEntries = 1;
