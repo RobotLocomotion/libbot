@@ -722,6 +722,8 @@ class Sheriff(object):
                     # what the deputy is reporting.
                     del deputy._commands[cmd.sheriff_id]
                     cmd.sheriff_id = cmd_msg.sheriff_id
+                    cmd.actual_runid = cmd_msg.actual_runid
+                    cmd.desired_runid = cmd.actual_runid
                     deputy._commands[cmd.sheriff_id] = cmd
                     _dbg("Merging command [%s] with command reported by deputy" \
                             % cmd.command_id)
