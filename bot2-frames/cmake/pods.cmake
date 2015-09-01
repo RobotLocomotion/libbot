@@ -307,7 +307,6 @@ macro(pods_use_pkg_config_packages target)
     string(STRIP ${_pods_pkg_ldflags} _pods_pkg_ldflags)
     #    message("ldflags: ${_pods_pkg_ldflags}")
     include_directories(${_pods_pkg_include_flags})
-    
     # make the target depend on libraries that are cmake targets
     if (_pods_pkg_ldflags)
         string(REPLACE " " ";" _split_ldflags ${_pods_pkg_ldflags})
