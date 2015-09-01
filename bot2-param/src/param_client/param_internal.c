@@ -370,6 +370,7 @@ new_element(const char * name)
 
 static void free_element(BotParamElement * el)
 {
+  if (el == NULL) return;
   free(el->name);
   BotParamElement * child, *next;
   for (child = el->children; child; child = next) {

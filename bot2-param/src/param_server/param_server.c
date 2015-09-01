@@ -85,14 +85,13 @@ void on_param_set(const lcm_recv_buf_t *rbuf, const char * channel, const bot_pa
       int end_pos = 0;
       int cur_val = 0;
       for (int k = 0; k < string_len; ++k, ++end_pos) {
+        if (str[k] == ',') continue;
         if ((k == string_len-1) || (str[k+1] == ',')) {
           int substr_len = end_pos-start_pos+1;
           vals[cur_val] = malloc(substr_len+1);
           memcpy(vals[cur_val], str+start_pos, substr_len);
           vals[cur_val][substr_len] = '\0';
-          k++;
-          start_pos = k+1;
-          end_pos = start_pos;
+          start_pos = k+2;
           cur_val++;
         }
       }
