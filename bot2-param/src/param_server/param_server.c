@@ -99,7 +99,7 @@ void on_param_set(const lcm_recv_buf_t *rbuf, const char * channel, const bot_pa
       success = (bot_param_set_str_array(self->params, msg->entries[i].key, vals, len) == len);
     }
     else {
-      success = (bot_param_set_str(self->params, msg->entries[i].key, msg->entries[i].value) == 0);
+      success = (bot_param_set_str(self->params, msg->entries[i].key, msg->entries[i].value) == 1);
     }
     if (success) {
       self->seqNo++;
