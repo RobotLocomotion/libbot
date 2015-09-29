@@ -62,13 +62,13 @@ if (WITH_BOT_VIS)
 
   ExternalProject_Add(bot2-lcmgl
 	  SOURCE_DIR ${PROJECT_SOURCE_DIR}/bot2-lcmgl
-	  CMAKE_CACHE_ARGS ${default_cmake_args}
+	  CMAKE_CACHE_ARGS ${default_cmake_args} -DUSE_BOT_VIS:BOOL=${WITH_BOT_VIS}
     DEPENDS bot2-vis)
 
   ExternalProject_Add(bot2-frames
 	  SOURCE_DIR ${PROJECT_SOURCE_DIR}/bot2-frames
 	  CMAKE_CACHE_ARGS ${default_cmake_args}
-	  DEPENDS bot2-core bot2-param bot2-vis)
+	  DEPENDS bot2-core bot2-param bot2-vis bot2-lcmgl)
 
 else()
 
