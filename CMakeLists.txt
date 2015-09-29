@@ -35,21 +35,25 @@ set(default_cmake_args
 
 ExternalProject_Add(bot2-core
 	SOURCE_DIR ${PROJECT_SOURCE_DIR}/bot2-core
+  BINARY_DIR ${PROJECT_SOURCE_DIR}/bot2-core/pod-build
 	CMAKE_CACHE_ARGS ${default_cmake_args})
 checkbuild(bot2-core)
 
 ExternalProject_Add(bot2-procman
 	SOURCE_DIR ${PROJECT_SOURCE_DIR}/bot2-procman
+  BINARY_DIR ${PROJECT_SOURCE_DIR}/bot2-procman/pod-build
 	CMAKE_CACHE_ARGS ${default_cmake_args})
 checkbuild(bot2-procman)
 
 ExternalProject_Add(bot2-lcm-utils
 	SOURCE_DIR ${PROJECT_SOURCE_DIR}/bot2-lcm-utils
+  BINARY_DIR ${PROJECT_SOURCE_DIR}/bot2-lcm-utils/pod-build
 	CMAKE_CACHE_ARGS ${default_cmake_args})
 checkbuild(bot2-lcm-utils)
 
 ExternalProject_Add(bot2-param
 	SOURCE_DIR ${PROJECT_SOURCE_DIR}/bot2-param
+  BINARY_DIR ${PROJECT_SOURCE_DIR}/bot2-param/pod-build
 	CMAKE_CACHE_ARGS ${default_cmake_args}
   DEPENDS bot2-core)
 
@@ -57,16 +61,19 @@ if (WITH_BOT_VIS)
 
   ExternalProject_Add(bot2-vis
 	  SOURCE_DIR ${PROJECT_SOURCE_DIR}/bot2-vis
+    BINARY_DIR ${PROJECT_SOURCE_DIR}/bot2-vis/pod-build
 	  CMAKE_CACHE_ARGS ${default_cmake_args}
     DEPENDS bot2-core)
 
   ExternalProject_Add(bot2-lcmgl
 	  SOURCE_DIR ${PROJECT_SOURCE_DIR}/bot2-lcmgl
+    BINARY_DIR ${PROJECT_SOURCE_DIR}/bot2-lcmgl/pod-build
 	  CMAKE_CACHE_ARGS ${default_cmake_args} -DUSE_BOT_VIS:BOOL=${WITH_BOT_VIS}
     DEPENDS bot2-vis)
 
   ExternalProject_Add(bot2-frames
 	  SOURCE_DIR ${PROJECT_SOURCE_DIR}/bot2-frames
+    BINARY_DIR ${PROJECT_SOURCE_DIR}/bot2-frames/pod-build
 	  CMAKE_CACHE_ARGS ${default_cmake_args}
 	  DEPENDS bot2-core bot2-param bot2-vis bot2-lcmgl)
 
@@ -74,6 +81,7 @@ else()
 
   ExternalProject_Add(bot2-lcmgl
 	  SOURCE_DIR ${PROJECT_SOURCE_DIR}/bot2-lcmgl
+    BINARY_DIR ${PROJECT_SOURCE_DIR}/bot2-lcmgl/pod-build
 	  CMAKE_CACHE_ARGS ${default_cmake_args} -DUSE_BOT_VIS:BOOL=${WITH_BOT_VIS})
 
 endif()
