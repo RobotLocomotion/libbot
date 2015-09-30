@@ -21,7 +21,21 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
-option(WITH_BOT_VIS "Build with bot2-vis" OFF)
+
+# Look for the gdkx.h header to decide whether the local gtk2 install has
+# X11 support or not.
+find_file(GDKX_HEADER gdkx.h PATH_SUFFIXES gtk-2.0/gdk)
+if(GDKXHEADER)
+  set(bot_vis_default ON)
+  message(STATUS "gdkx.h found, system appears to have gtk+X11 support")
+else()
+  set(bot_vis_default OFF)
+  message(STATUS "gdkx.h not found, system not appear to have gtk+X11 support")
+endif()
+
+
+option(WITH_BOT_VIS "Build with bot2-vis" ${bot_vis_default})
+
 
 # call this macro for each project without dependencies so that it will
 # re-check the build in case there are modified files.  In CMake 3.1, you
@@ -71,6 +85,8 @@ ExternalProject_Add(bot2-param
 
 if (WITH_BOT_VIS)
 
+  message(STATUS "Configuring with bot2-vis, modules requiring gtk+x11 will be built.")
+
   ExternalProject_Add(bot2-vis
     SOURCE_DIR ${PROJECT_SOURCE_DIR}/bot2-vis
     BINARY_DIR ${PROJECT_SOURCE_DIR}/bot2-vis/pod-build
@@ -90,6 +106,8 @@ if (WITH_BOT_VIS)
     DEPENDS bot2-core bot2-param bot2-vis bot2-lcmgl)
 
 else()
+
+  message(STATUS "Configuring without bot2-vis, modules requiring gtk+x11 will not be built.")
 
   ExternalProject_Add(bot2-lcmgl
     SOURCE_DIR ${PROJECT_SOURCE_DIR}/bot2-lcmgl
