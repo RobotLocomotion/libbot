@@ -24,14 +24,14 @@ endif()
 
 # Look for the gdkx.h header to decide whether the local gtk2 install has
 # X11 support or not.
-find_file(GDKX_HEADER gdkx.h PATH_SUFFIXES gtk-2.0/gdk)
-if(GDKXHEADER)
-  set(bot_vis_default ON)
-  message(STATUS "gdkx.h found, system appears to have gtk+X11 support")
-else()
-  set(bot_vis_default OFF)
-  message(STATUS "gdkx.h not found, system not appear to have gtk+X11 support")
-endif()
+#find_file(GDKX_HEADER gdkx.h PATH_SUFFIXES gtk-2.0/gdk)
+#if(GDKXHEADER)
+set(bot_vis_default ON)
+#  message(STATUS "gdkx.h found, system appears to have gtk+X11 support")
+#else()
+#set(bot_vis_default OFF)
+#message(STATUS "gdkx.h not found, system not appear to have gtk+X11 support")
+#endif()
 
 
 option(WITH_BOT_VIS "Build with bot2-vis" ${bot_vis_default})

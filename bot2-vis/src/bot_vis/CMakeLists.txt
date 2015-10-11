@@ -4,11 +4,9 @@ file(GLOB h_files *.h)
 # Keep the GLM library out of the public API
 list(REMOVE_ITEM h_files glm.h)
 
-include_directories(${JPEG_INCLUDE_DIR})
-
 add_library(bot2-vis SHARED ${c_files})
 
-set(REQUIRED_LIBS ${JPEG_LIBRARY} ${GLUT_LIBRARIES} ${ZLIB_LIBRARIES})
+set(REQUIRED_LIBS ${LIBJPEG_LIBRARIES} ${GLUT_LIBRARIES} ${ZLIB_LIBRARIES})
 if (APPLE)  
 # note: the following lines will now work on every platform (and
 # really should be included), but they depend on a fix to pods.cmake,
