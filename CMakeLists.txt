@@ -115,3 +115,5 @@ else()
     CMAKE_CACHE_ARGS ${default_cmake_args} -DUSE_BOT_VIS:BOOL=${WITH_BOT_VIS})
 
 endif()
+
+install(CODE "message(\"Nothing to do for install.\")")
