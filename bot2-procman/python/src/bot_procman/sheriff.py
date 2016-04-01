@@ -322,8 +322,8 @@ class SheriffDeputy(object):
 
         @return True if this deputy object manages \p command, False if not.
         """
-        return command.sheriff_id in self._commands and \
-                self._commands [command.sheriff_id] is command
+        return cmd_object.sheriff_id in self._commands and \
+                self._commands [cmd_object.sheriff_id] is cmd_object
 
     def _update_from_deputy_info2(self, dep_info_msg):
         """
