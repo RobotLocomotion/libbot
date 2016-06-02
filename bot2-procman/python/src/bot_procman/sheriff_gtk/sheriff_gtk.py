@@ -598,7 +598,7 @@ class SheriffHeadless(object):
             self.spawned_deputy.terminate()
         except AttributeError: # python 2.4, 2.5 don't have Popen.terminate()
             os.kill(self.spawned_deputy.pid, signal.SIGTERM)
-            self.spawned_deputy.wait()
+        self.spawned_deputy.wait()
         self.spawned_deputy = None
 
     def _start_script(self):
